@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI CapEx Monitor</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark">AI</span>
+          <div>
+            <h1>CapEx Monitor</h1>
+            <p id="runLabel">Loading model run</p>
+          </div>
+        </div>
+        <nav class="nav-list" aria-label="Dashboard views">
+          <a href="#overview" class="active">Overview</a>
+          <a href="#breakdowns">Breakdowns</a>
+          <a href="#bridge">Country x Company</a>
+          <a href="#finance">Funding & ROIC</a>
+          <a href="#sources">Sources</a>
+        </nav>
+      </aside>
+
+      <main class="dashboard">
+        <section id="overview" class="section-band">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow">2026-2045 forecast</p>
+              <h2>Global AI Infrastructure Investment</h2>
+            </div>
+            <div class="status-pill" id="healthStatus">Connecting</div>
+          </div>
+
+          <div class="kpi-grid" id="kpiGrid"></div>
+
+          <div class="two-column">
+            <div class="panel">
+              <div class="panel-title">
+                <h3>Global Total</h3>
+                <span>USD bn, nominal</span>
+              </div>
+              <div id="globalLine" class="chart"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">
+                <h3>2030 Mix</h3>
+                <span>Top categories</span>
+              </div>
+              <div class="tabs" id="mixTabs">
+                <button data-dimension="country" class="active">Countries</button>
+                <button data-dimension="company">Companies</button>
+                <button data-dimension="component">Components</button>
+              </div>
+              <div id="mixBars" class="bar-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="breakdowns" class="section-band">
+          <div class="section-header compact">
+            <div>
+              <p class="eyebrow">Drilldown</p>
+              <h2>Entity Component Mix</h2>
+            </div>
+            <div class="toolbar">
+              <select id="entityTypeSelect" aria-label="Entity type">
+                <option value="country">Country</option>
+                <option value="company">Company</option>
+              </select>
+              <select id="entityNameSelect" aria-label="Entity name"></select>
+              <select id="yearSelect" aria-label="Forecast year"></select>
+            </div>
+          </div>
+          <div class="two-column">
+            <div class="panel">
+              <div class="panel-title">
+                <h3 id="componentTitle">Component Allocation</h3>
+                <span>Amount by component</span>
+              </div>
+              <div id="componentBars" class="bar-list tall"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">
+                <h3>Top Forecast Rows</h3>
+                <span id="breakdownCaption">Country ranking</span>
+              </div>
+              <div class="tabs" id="breakdownTabs">
+                <button data-dimension="country" class="active">Country</button>
+                <button data-dimension="company">Company</button>
+                <button data-dimension="component">Component</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Item</th>
+                      <th>Share</th>
+                      <th>USD bn</th>
+                    </tr>
+                  </thead>
+                  <tbody id="breakdownTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="bridge" class="section-band">
+          <div class="section-header compact">
+            <div>
+              <p class="eyebrow">Attribution bridge</p>
+              <h2>Country x Company x Component</h2>
+            </div>
+            <div class="toolbar">
+              <select id="bridgeCountrySelect" aria-label="Bridge country"></select>
+              <select id="bridgeCompanySelect" aria-label="Bridge company"></select>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">
+              <h3>Largest Allocations</h3>
+              <span id="bridgeCaption">Filtered by selected year</span>
+            </div>
+            <div class="table-wrap bridge-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Country</th>
+                    <th>Company</th>
+                    <th>Component</th>
+                    <th>USD bn</th>
+                  </tr>
+                </thead>
+                <tbody id="bridgeTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="finance" class="section-band">
+          <div class="section-header compact">
+            <div>
+              <p class="eyebrow">Capital stack</p>
+              <h2>Funding & ROIC Proxy</h2>
+            </div>
+            <div class="toolbar">
+              <select id="financeCompanySelect" aria-label="Finance company"></select>
+            </div>
+          </div>
+          <div class="two-column">
+            <div class="panel">
+              <div class="panel-title">
+                <h3>Funding Mix</h3>
+                <span id="fundingCaption">Selected year</span>
+              </div>
+              <div id="fundingBars" class="bar-list"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">
+                <h3>ROIC Path</h3>
+                <span>Incremental project view</span>
+              </div>
+              <div id="roicLine" class="chart"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="sources" class="section-band">
+          <div class="section-header compact">
+            <div>
+              <p class="eyebrow">Traceability</p>
+              <h2>Source Register</h2>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="table-wrap sources-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Theme</th>
+                    <th>Key fact</th>
+                    <th>Type</th>
+                  </tr>
+                </thead>
+                <tbody id="sourcesTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -55,3 +55,23 @@ The importer writes tables including:
 - `company_finance_roic`
 
 The current MySQL user may not have `REFERENCES` privilege, so the importer does not require foreign keys. Integrity is maintained through primary keys and the shared `run_id`.
+
+## Run API And Dashboard
+
+```bash
+npm install
+npm start
+```
+
+Open `http://localhost:3000`.
+
+API examples:
+
+- `GET /api/health`
+- `GET /api/summary`
+- `GET /api/global`
+- `GET /api/breakdown/country?year=2030`
+- `GET /api/entity-components?entity_type=country&entity_name=United%20States&year=2030`
+- `GET /api/country-company-components?year=2030&country=United%20States`
+- `GET /api/funding?company=Amazon&year=2030`
+- `GET /api/finance?company=Amazon`
