@@ -8,7 +8,7 @@ const mysql = require("mysql2/promise");
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 const app = express();
-const port = Number(process.env.APP_PORT || process.env.PORT || 3000);
+const port = Number(process.env.APP_PORT || process.env.PORT || 8788);
 const publicDir = path.join(__dirname, "..", "public");
 const projectRoot = path.join(__dirname, "..");
 let recalculation = null;
