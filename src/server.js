@@ -1,4 +1,5 @@
 const path = require("node:path");
+const { spawn } = require("node:child_process");
 
 const dotenv = require("dotenv");
 const express = require("express");
@@ -9,6 +10,8 @@ dotenv.config({ path: path.join(__dirname, "..", ".env") });
 const app = express();
 const port = Number(process.env.APP_PORT || process.env.PORT || 3000);
 const publicDir = path.join(__dirname, "..", "public");
+const projectRoot = path.join(__dirname, "..");
+let recalculation = null;
 
 const requiredEnv = ["MYSQL_HOST", "MYSQL_PORT", "MYSQL_USER", "MYSQL_PASSWORD", "MYSQL_DATABASE"];
 const missingEnv = requiredEnv.filter((key) => !process.env[key]);
@@ -405,6 +408,76 @@ app.get(
       [runId, limit],
     );
     res.json({ run_id: runId, rows });
+  }),
+);
+
+function requireRecalculateAccess(req, res) {
+  if (process.env.RECALCULATE_ENABLED !== "true") {
+    res.status(403).json({ error: "Recalculation API is disabled" });
+    return false;
+  }
+  const token = process.env.RECALCULATE_TOKEN;
+  if (token && req.header("x-recalculate-token") !== token) {
+    res.status(401).json({ error: "Invalid recalculation token" });
+    return false;
+  }
+  return true;
+}
+
+app.get("/api/recalculate/status", (req, res) => {
+  res.json({
+    enabled: process.env.RECALCULATE_ENABLED === "true",
+    running: Boolean(recalculation?.running),
+    started_at: recalculation?.started_at || null,
+    finished_at: recalculation?.finished_at || null,
+    exit_code: recalculation?.exit_code ?? null,
+    last_output: recalculation?.last_output || null,
+  });
+});
+
+app.post(
+  "/api/recalculate",
+  asyncRoute(async (req, res) => {
+    if (!requireRecalculateAccess(req, res)) return;
+    if (recalculation?.running) {
+      return res.status(409).json({ error: "Recalculation is already running", started_at: recalculation.started_at });
+    }
+
+    const pythonBin = process.env.PYTHON_BIN || "python3";
+    const scriptPath = path.join(projectRoot, "scripts", "import_aicapex_workbook.py");
+    const startedAt = new Date().toISOString();
+    recalculation = { running: true, started_at: startedAt, finished_at: null, exit_code: null, last_output: "" };
+
+    const output = [];
+    const child = spawn(pythonBin, [scriptPath], {
+      cwd: projectRoot,
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    child.stdout.on("data", (chunk) => output.push(chunk.toString()));
+    child.stderr.on("data", (chunk) => output.push(chunk.toString()));
+
+    const exitCode = await new Promise((resolve, reject) => {
+      child.on("error", reject);
+      child.on("close", resolve);
+    });
+
+    const text = output.join("").slice(-12000);
+    recalculation = {
+      running: false,
+      started_at: startedAt,
+      finished_at: new Date().toISOString(),
+      exit_code: exitCode,
+      last_output: text,
+    };
+
+    if (exitCode !== 0) {
+      return res.status(500).json({ error: "Recalculation failed", output: text });
+    }
+
+    const runId = await latestRunId();
+    res.json({ ok: true, run_id: runId, output: text });
   }),
 );
 

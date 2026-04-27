@@ -502,7 +502,30 @@ def import_workbook(env: dict[str, str]) -> dict[str, int]:
 
     wb = load_workbook(excel_path, data_only=False, read_only=True)
 
-    mysql_execute(f"DELETE FROM model_runs WHERE run_id = {sql_value(run_id)};", env, database)
+    run_tables = [
+        "source_register",
+        "driver_contributions",
+        "global_forecast",
+        "share_assumptions",
+        "forecast_totals",
+        "memory_storage_split_assumptions",
+        "component_useful_life",
+        "component_tilt_assumptions",
+        "entity_component_forecast",
+        "company_country_shares",
+        "ras_factors",
+        "country_company_allocation",
+        "country_company_component_forecast",
+        "funding_source_metadata",
+        "company_funding_assumptions",
+        "company_funding_terms",
+        "company_roic_spread",
+        "company_finance_roic",
+        "model_runs",
+    ]
+    for table in run_tables:
+        mysql_execute(f"DELETE FROM {sql_ident(table)} WHERE run_id = {sql_value(run_id)};", env, database)
+
     insert_rows(
         env,
         database,

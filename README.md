@@ -75,3 +75,6 @@ API examples:
 - `GET /api/country-company-components?year=2030&country=United%20States`
 - `GET /api/funding?company=Amazon&year=2030`
 - `GET /api/finance?company=Amazon`
+- `POST /api/recalculate` with `x-recalculate-token` when `RECALCULATE_ENABLED=true`
+
+The recalculation endpoint runs `scripts/import_aicapex_workbook.py` and reloads the latest workbook into MySQL as a new versioned model run. Keep it disabled unless the service is running in a trusted environment.
