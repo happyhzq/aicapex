@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node src/server.js",
-    "check": "node --check src/server.js"
+    "check": "node --check src/server.js && node --check public/app.js && node --check scripts/mysql_exec.js && node --check scripts/create_user.js",
+    "user:create": "node scripts/create_user.js"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
