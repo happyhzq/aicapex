@@ -74,6 +74,37 @@ AUTH_BOOTSTRAP_NAME=Administrator
 AUTH_BOOTSTRAP_TIER=admin
 ```
 
+## Authorized Proxy Pool Utility
+
+This repo also includes a standalone proxy pool CLI for proxies you own, operate, or are explicitly authorized to use. It does not scrape public proxy lists.
+
+Create `proxies.txt` from `proxies.example.txt`, then add one proxy URL per line:
+
+```bash
+cp proxies.example.txt proxies.txt
+```
+
+Batch validate proxies:
+
+```bash
+npm run proxy:validate -- --file proxies.txt --target https://api.ipify.org?format=json --out tmp/proxy-health.json --healthy-out tmp/healthy-proxies.txt
+```
+
+Start a local rotating proxy with an outbound host allowlist:
+
+```bash
+npm run proxy:serve -- --file tmp/healthy-proxies.txt --allow-host api.ipify.org --allow-host httpbin.org --port 8899
+```
+
+Use the local endpoint as your HTTP proxy:
+
+```bash
+curl -x http://127.0.0.1:8899 https://api.ipify.org?format=json
+curl http://127.0.0.1:8899/status
+```
+
+The rotator uses round-robin selection across loaded proxies, marks successful requests healthy again, and ejects a proxy after `--max-failures` consecutive failures.
+
 After the first admin exists, create or update users with:
 
 ```bash
