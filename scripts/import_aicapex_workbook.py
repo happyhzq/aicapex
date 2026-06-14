@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import os
 import shutil
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +20,22 @@ START_YEAR = 2026
 MID_YEAR = 2030
 END_YEAR = 2045
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+HARDWARE_CONFIG_PATH = PROJECT_ROOT / "config" / "hardware_tracks.json"
+ENV_OVERRIDE_KEYS = {
+    "EXCEL_PATH",
+    "MYSQL_HOST",
+    "MYSQL_PORT",
+    "MYSQL_USER",
+    "MYSQL_PASSWORD",
+    "MYSQL_DATABASE",
+    "PIPELINE_ID",
+    "PIPELINE_SOURCE_WORKBOOK_PATH",
+    "PIPELINE_GENERATED_WORKBOOK_PATH",
+    "PIPELINE_SOURCE_SNAPSHOT_PATH",
+    "PIPELINE_ADJUSTMENT_PATH",
+    "PIPELINE_MANIFEST_PATH",
+    "PIPELINE_GENERATED_AT",
+}
 
 
 def load_env(path: Path) -> dict[str, str]:
@@ -33,6 +51,14 @@ def load_env(path: Path) -> dict[str, str]:
         value = value.strip().strip('"').strip("'")
         env[key] = value
     return env
+
+
+def apply_env_overrides(env: dict[str, str]) -> dict[str, str]:
+    merged = dict(env)
+    for key in ENV_OVERRIDE_KEYS:
+        if os.environ.get(key):
+            merged[key] = str(os.environ[key])
+    return merged
 
 
 def mysql_client() -> str:
@@ -66,13 +92,14 @@ def mysql_args(env: dict[str, str], database: str | None = None) -> list[str]:
 def mysql_execute(sql: str, env: dict[str, str], database: str | None = None) -> str:
     proc_env = os.environ.copy()
     proc_env["MYSQL_PWD"] = env["MYSQL_PASSWORD"]
-    proc = subprocess.run(
-        mysql_args(env, database),
-        input=sql,
-        text=True,
-        capture_output=True,
-        env=proc_env,
-    )
+    try:
+        args = mysql_args(env, database)
+    except RuntimeError:
+        args = ["node", str(PROJECT_ROOT / "scripts" / "mysql_exec.js")]
+        if database:
+            args.append(database)
+        proc_env.update(env)
+    proc = subprocess.run(args, input=sql, text=True, capture_output=True, env=proc_env)
     if proc.returncode != 0:
         stderr = proc.stderr.replace(env["MYSQL_PASSWORD"], "***")
         raise RuntimeError(f"MySQL command failed:\n{stderr}")
@@ -105,7 +132,7 @@ def insert_rows(
     table: str,
     columns: list[str],
     rows: list[tuple[Any, ...]],
-    batch_size: int = 700,
+    batch_size: int = 3000,
 ) -> None:
     if not rows:
         return
@@ -228,6 +255,10 @@ def grouped_values_by_year(rows: list[dict[str, Any]]) -> dict[str, dict[str, di
             for year in YEARS
         }
     return out
+
+
+def load_hardware_config() -> dict[str, Any]:
+    return json.loads(HARDWARE_CONFIG_PATH.read_text(encoding="utf-8"))
 
 
 def create_schema(env: dict[str, str]) -> None:
@@ -480,6 +511,114 @@ CREATE TABLE IF NOT EXISTS company_finance_roic (
   PRIMARY KEY (run_id, company_name, year_num),
   CONSTRAINT fk_finance_roic_run FOREIGN KEY (run_id) REFERENCES model_runs(run_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS model_run_artifacts (
+  run_id VARCHAR(96) NOT NULL,
+  pipeline_id VARCHAR(96),
+  source_workbook_path TEXT,
+  generated_workbook_path TEXT,
+  source_snapshot_path TEXT,
+  adjustment_path TEXT,
+  manifest_path TEXT,
+  generated_at VARCHAR(40),
+  import_trigger VARCHAR(64),
+  manifest_json LONGTEXT,
+  PRIMARY KEY (run_id),
+  CONSTRAINT fk_artifacts_run FOREIGN KEY (run_id) REFERENCES model_runs(run_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS external_source_observations (
+  run_id VARCHAR(96) NOT NULL,
+  pipeline_id VARCHAR(96),
+  source_id VARCHAR(96) NOT NULL,
+  source_name VARCHAR(255),
+  source_type VARCHAR(64),
+  signal_name VARCHAR(128),
+  status VARCHAR(32),
+  fetched_at VARCHAR(40),
+  url TEXT,
+  raw_path TEXT,
+  parsed_path TEXT,
+  latest_date VARCHAR(40),
+  latest_value DOUBLE,
+  yoy DOUBLE,
+  row_count INT,
+  error_message TEXT,
+  metadata_json LONGTEXT,
+  PRIMARY KEY (run_id, source_id),
+  CONSTRAINT fk_external_sources_run FOREIGN KEY (run_id) REFERENCES model_runs(run_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS model_driver_adjustments (
+  run_id VARCHAR(96) NOT NULL,
+  pipeline_id VARCHAR(96),
+  driver_name VARCHAR(160) NOT NULL,
+  year_num INT NOT NULL,
+  baseline_contribution DOUBLE,
+  adjusted_contribution DOUBLE,
+  delta_contribution DOUBLE,
+  signal_name VARCHAR(128),
+  rationale TEXT,
+  PRIMARY KEY (run_id, driver_name, year_num),
+  CONSTRAINT fk_model_adjustments_run FOREIGN KEY (run_id) REFERENCES model_runs(run_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS optical_split_assumptions (
+  run_id VARCHAR(96) NOT NULL,
+  source_component VARCHAR(191) NOT NULL,
+  target_2026 DOUBLE,
+  target_2030 DOUBLE,
+  target_2045 DOUBLE,
+  source_logic TEXT,
+  PRIMARY KEY (run_id, source_component),
+  CONSTRAINT fk_optical_split_run FOREIGN KEY (run_id) REFERENCES model_runs(run_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS optical_investment_forecast (
+  run_id VARCHAR(96) NOT NULL,
+  category_id VARCHAR(96) NOT NULL,
+  display_name VARCHAR(191) NOT NULL,
+  year_num INT NOT NULL,
+  category_share DOUBLE,
+  amount_usd_bn DOUBLE NOT NULL,
+  share_of_global DOUBLE,
+  source_logic TEXT,
+  PRIMARY KEY (run_id, category_id, year_num),
+  CONSTRAINT fk_optical_forecast_run FOREIGN KEY (run_id) REFERENCES model_runs(run_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS hardware_track_definitions (
+  run_id VARCHAR(96) NOT NULL,
+  track_id VARCHAR(96) NOT NULL,
+  display_name VARCHAR(191) NOT NULL,
+  short_name VARCHAR(96),
+  description TEXT,
+  optical_derived BOOLEAN NOT NULL DEFAULT FALSE,
+  components_json LONGTEXT,
+  PRIMARY KEY (run_id, track_id),
+  CONSTRAINT fk_hw_track_def_run FOREIGN KEY (run_id) REFERENCES model_runs(run_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS hardware_track_constituents (
+  run_id VARCHAR(96) NOT NULL,
+  track_id VARCHAR(96) NOT NULL,
+  symbol VARCHAR(32) NOT NULL,
+  company_name VARCHAR(191) NOT NULL,
+  role TEXT,
+  weight DOUBLE,
+  PRIMARY KEY (run_id, track_id, symbol),
+  CONSTRAINT fk_hw_track_const_run FOREIGN KEY (run_id) REFERENCES model_runs(run_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS hardware_track_forecast (
+  run_id VARCHAR(96) NOT NULL,
+  track_id VARCHAR(96) NOT NULL,
+  year_num INT NOT NULL,
+  amount_usd_bn DOUBLE NOT NULL,
+  share_of_global DOUBLE,
+  PRIMARY KEY (run_id, track_id, year_num),
+  CONSTRAINT fk_hw_track_forecast_run FOREIGN KEY (run_id) REFERENCES model_runs(run_id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 """
     # The remote import user may not have REFERENCES privilege. The model is
     # versioned by run_id and the importer deletes/reloads one run at a time, so
@@ -487,6 +626,343 @@ CREATE TABLE IF NOT EXISTS company_finance_roic (
     ddl = "\n".join(line for line in ddl.splitlines() if "CONSTRAINT fk_" not in line)
     ddl = ddl.replace(",\n) ENGINE", "\n) ENGINE")
     mysql_execute(ddl, env, database)
+    ensure_schema_columns(env, database)
+
+
+def table_column_exists(env: dict[str, str], database: str, table: str, column: str) -> bool:
+    sql = (
+        "SELECT COUNT(*) AS column_count "
+        "FROM information_schema.COLUMNS "
+        f"WHERE TABLE_SCHEMA = {sql_value(database)} "
+        f"AND TABLE_NAME = {sql_value(table)} "
+        f"AND COLUMN_NAME = {sql_value(column)};"
+    )
+    output = mysql_execute(sql, env, database)
+    for raw_line in output.splitlines():
+        line = raw_line.strip()
+        if not line or line.lower().startswith("column_count"):
+            continue
+        try:
+            return int(line.split("\t")[0]) > 0
+        except ValueError:
+            continue
+    return False
+
+
+def ensure_schema_columns(env: dict[str, str], database: str) -> None:
+    optional_columns = [
+        ("external_source_observations", "metadata_json", "LONGTEXT"),
+    ]
+    for table, column, definition in optional_columns:
+        if not table_column_exists(env, database, table, column):
+            mysql_execute(f"ALTER TABLE {sql_ident(table)} ADD COLUMN {sql_ident(column)} {definition};", env, database)
+
+
+def read_pipeline_json(env: dict[str, str], key: str) -> Any | None:
+    value = env.get(key)
+    if not value:
+        return None
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        path = PROJECT_ROOT / path
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def insert_pipeline_metadata(env: dict[str, str], database: str, run_id: str, excel_path: Path) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    pipeline_id = env.get("PIPELINE_ID")
+    manifest = read_pipeline_json(env, "PIPELINE_MANIFEST_PATH")
+    source_snapshot = read_pipeline_json(env, "PIPELINE_SOURCE_SNAPSHOT_PATH")
+    adjustment_snapshot = read_pipeline_json(env, "PIPELINE_ADJUSTMENT_PATH")
+
+    if pipeline_id or manifest or source_snapshot or adjustment_snapshot:
+        artifact_row = (
+            run_id,
+            pipeline_id,
+            env.get("PIPELINE_SOURCE_WORKBOOK_PATH"),
+            env.get("PIPELINE_GENERATED_WORKBOOK_PATH") or str(excel_path),
+            env.get("PIPELINE_SOURCE_SNAPSHOT_PATH"),
+            env.get("PIPELINE_ADJUSTMENT_PATH"),
+            env.get("PIPELINE_MANIFEST_PATH"),
+            env.get("PIPELINE_GENERATED_AT"),
+            os.environ.get("AUTO_UPDATE_TRIGGER"),
+            json.dumps(manifest, sort_keys=True) if manifest else None,
+        )
+        insert_rows(
+            env,
+            database,
+            "model_run_artifacts",
+            [
+                "run_id",
+                "pipeline_id",
+                "source_workbook_path",
+                "generated_workbook_path",
+                "source_snapshot_path",
+                "adjustment_path",
+                "manifest_path",
+                "generated_at",
+                "import_trigger",
+                "manifest_json",
+            ],
+            [artifact_row],
+        )
+        counts["model_run_artifacts"] = 1
+
+    source_rows = []
+    for item in (source_snapshot or {}).get("sources", []):
+        source_rows.append(
+            (
+                run_id,
+                pipeline_id,
+                item.get("source_id"),
+                item.get("source_name"),
+                item.get("source_type"),
+                item.get("signal"),
+                item.get("status"),
+                item.get("fetched_at"),
+                item.get("url"),
+                item.get("raw_path"),
+                item.get("parsed_path"),
+                item.get("latest_date"),
+                item.get("latest_value"),
+                item.get("yoy"),
+                item.get("row_count"),
+                item.get("error"),
+                json.dumps(item, sort_keys=True),
+            )
+        )
+    insert_rows(
+        env,
+        database,
+        "external_source_observations",
+        [
+            "run_id",
+            "pipeline_id",
+            "source_id",
+            "source_name",
+            "source_type",
+            "signal_name",
+            "status",
+            "fetched_at",
+            "url",
+            "raw_path",
+            "parsed_path",
+            "latest_date",
+            "latest_value",
+            "yoy",
+            "row_count",
+            "error_message",
+            "metadata_json",
+        ],
+        source_rows,
+    )
+    counts["external_source_observations"] = len(source_rows)
+
+    adjustment_rows = []
+    for item in (adjustment_snapshot or {}).get("adjustments", []):
+        adjustment_rows.append(
+            (
+                run_id,
+                pipeline_id,
+                item.get("driver_name"),
+                item.get("year_num"),
+                item.get("baseline_contribution"),
+                item.get("adjusted_contribution"),
+                item.get("delta_contribution"),
+                item.get("signal_name"),
+                item.get("rationale"),
+            )
+        )
+    insert_rows(
+        env,
+        database,
+        "model_driver_adjustments",
+        [
+            "run_id",
+            "pipeline_id",
+            "driver_name",
+            "year_num",
+            "baseline_contribution",
+            "adjusted_contribution",
+            "delta_contribution",
+            "signal_name",
+            "rationale",
+        ],
+        adjustment_rows,
+    )
+    counts["model_driver_adjustments"] = len(adjustment_rows)
+    return counts
+
+
+def insert_hardware_track_data(
+    env: dict[str, str],
+    database: str,
+    run_id: str,
+    global_amount: dict[int, float],
+    component_amounts: dict[str, dict[int, float]],
+) -> dict[str, int]:
+    config = load_hardware_config()
+    counts: dict[str, int] = {}
+    optical_config = config.get("optical_split", {})
+    optical_sources = optical_config.get("source_components", [])
+    optical_categories = optical_config.get("categories", [])
+
+    optical_assumption_rows = [
+        (
+            run_id,
+            source.get("component_name"),
+            source.get("target_2026"),
+            source.get("target_2030"),
+            source.get("target_2045"),
+            source.get("source_logic"),
+        )
+        for source in optical_sources
+    ]
+    insert_rows(
+        env,
+        database,
+        "optical_split_assumptions",
+        ["run_id", "source_component", "target_2026", "target_2030", "target_2045", "source_logic"],
+        optical_assumption_rows,
+    )
+    counts["optical_split_assumptions"] = len(optical_assumption_rows)
+
+    optical_total_by_year: dict[int, float] = {}
+    optical_rows = []
+    for year in YEARS:
+        optical_total = 0.0
+        for source in optical_sources:
+            component_name = source["component_name"]
+            source_amount = component_amounts.get(component_name, {}).get(year, 0.0)
+            optical_share = interpolate(
+                float(source["target_2026"]),
+                float(source["target_2030"]),
+                float(source["target_2045"]),
+                year,
+            )
+            optical_total += source_amount * optical_share
+        optical_total_by_year[year] = optical_total
+
+        category_share_sum = sum(
+            interpolate(
+                float(category["target_2026"]),
+                float(category["target_2030"]),
+                float(category["target_2045"]),
+                year,
+            )
+            for category in optical_categories
+        ) or 1.0
+        for category in optical_categories:
+            raw_share = interpolate(
+                float(category["target_2026"]),
+                float(category["target_2030"]),
+                float(category["target_2045"]),
+                year,
+            )
+            category_share = raw_share / category_share_sum
+            amount = optical_total * category_share
+            optical_rows.append(
+                (
+                    run_id,
+                    category["category_id"],
+                    category["display_name"],
+                    year,
+                    category_share,
+                    amount,
+                    amount / global_amount[year] if global_amount[year] else 0.0,
+                    category.get("source_logic"),
+                )
+            )
+    insert_rows(
+        env,
+        database,
+        "optical_investment_forecast",
+        [
+            "run_id",
+            "category_id",
+            "display_name",
+            "year_num",
+            "category_share",
+            "amount_usd_bn",
+            "share_of_global",
+            "source_logic",
+        ],
+        optical_rows,
+    )
+    counts["optical_investment_forecast"] = len(optical_rows)
+
+    track_definition_rows = []
+    constituent_rows = []
+    track_forecast_rows = []
+    for track in config.get("tracks", []):
+        track_definition_rows.append(
+            (
+                run_id,
+                track["track_id"],
+                track["display_name"],
+                track.get("short_name"),
+                track.get("description"),
+                bool(track.get("optical_derived")),
+                json.dumps(track.get("components", []), sort_keys=True),
+            )
+        )
+        for constituent in track.get("constituents", []):
+            constituent_rows.append(
+                (
+                    run_id,
+                    track["track_id"],
+                    constituent["symbol"],
+                    constituent["company_name"],
+                    constituent.get("role"),
+                    constituent.get("weight"),
+                )
+            )
+        for year in YEARS:
+            if track.get("optical_derived"):
+                amount = optical_total_by_year.get(year, 0.0)
+            else:
+                amount = sum(
+                    component_amounts.get(component["component_name"], {}).get(year, 0.0)
+                    * float(component.get("weight", 1.0))
+                    for component in track.get("components", [])
+                )
+            track_forecast_rows.append(
+                (
+                    run_id,
+                    track["track_id"],
+                    year,
+                    amount,
+                    amount / global_amount[year] if global_amount[year] else 0.0,
+                )
+            )
+
+    insert_rows(
+        env,
+        database,
+        "hardware_track_definitions",
+        ["run_id", "track_id", "display_name", "short_name", "description", "optical_derived", "components_json"],
+        track_definition_rows,
+    )
+    insert_rows(
+        env,
+        database,
+        "hardware_track_constituents",
+        ["run_id", "track_id", "symbol", "company_name", "role", "weight"],
+        constituent_rows,
+    )
+    insert_rows(
+        env,
+        database,
+        "hardware_track_forecast",
+        ["run_id", "track_id", "year_num", "amount_usd_bn", "share_of_global"],
+        track_forecast_rows,
+    )
+    counts["hardware_track_definitions"] = len(track_definition_rows)
+    counts["hardware_track_constituents"] = len(constituent_rows)
+    counts["hardware_track_forecast"] = len(track_forecast_rows)
+    return counts
 
 
 def import_workbook(env: dict[str, str]) -> dict[str, int]:
@@ -498,7 +974,8 @@ def import_workbook(env: dict[str, str]) -> dict[str, int]:
         raise FileNotFoundError(excel_path)
 
     sha = workbook_hash(excel_path)
-    run_id = f"{excel_path.stem[:48]}_{sha[:10]}"
+    run_stamp = os.environ.get("MODEL_RUN_STAMP") or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    run_id = f"{excel_path.stem[:48]}_{sha[:10]}_{run_stamp}"
 
     wb = load_workbook(excel_path, data_only=False, read_only=True)
 
@@ -521,6 +998,14 @@ def import_workbook(env: dict[str, str]) -> dict[str, int]:
         "company_funding_terms",
         "company_roic_spread",
         "company_finance_roic",
+        "model_run_artifacts",
+        "external_source_observations",
+        "model_driver_adjustments",
+        "optical_split_assumptions",
+        "optical_investment_forecast",
+        "hardware_track_definitions",
+        "hardware_track_constituents",
+        "hardware_track_forecast",
         "model_runs",
     ]
     for table in run_tables:
@@ -645,6 +1130,7 @@ def import_workbook(env: dict[str, str]) -> dict[str, int]:
             forecast_rows.append((run_id, "component", component, year, component_shares[component][year], amount))
     insert_rows(env, database, "forecast_totals", ["run_id", "dimension_name", "item_name", "year_num", "share_of_global", "amount_usd_bn"], forecast_rows)
     counts["forecast_totals"] = len(forecast_rows)
+    counts.update(insert_hardware_track_data(env, database, run_id, global_amount, component_amounts))
 
     # Memory/storage split assumptions.
     ws = wb["Mem_Storage_Split_Assumptions"]
@@ -941,12 +1427,14 @@ def import_workbook(env: dict[str, str]) -> dict[str, int]:
     )
     counts["company_finance_roic"] = len(finance_rows)
 
+    counts.update(insert_pipeline_metadata(env, database, run_id, excel_path))
+
     counts["run_id"] = run_id  # type: ignore[assignment]
     return counts
 
 
 def main() -> int:
-    env = load_env(PROJECT_ROOT / ".env")
+    env = apply_env_overrides(load_env(PROJECT_ROOT / ".env"))
     required = ["MYSQL_HOST", "MYSQL_PORT", "MYSQL_USER", "MYSQL_PASSWORD", "MYSQL_DATABASE"]
     missing = [key for key in required if not env.get(key)]
     if missing:

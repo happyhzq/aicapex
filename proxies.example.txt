@@ -1,0 +1,5 @@
+# One authorized proxy per line. Do not put public proxy dumps here.
+# Supported upstream schemes: http:// and https://
+#
+# http://username:password@proxy.example.com:8080
+# http://proxy.example.com:3128

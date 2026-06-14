@@ -7,7 +7,11 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node src/server.js",
-    "check": "node --check src/server.js"
+    "check": "node --check src/server.js && node --check public/app.js && node --check scripts/mysql_exec.js && node --check scripts/create_user.js && node --check scripts/proxy_pool.js && node --check scripts/check_stripe_config.js",
+    "user:create": "node scripts/create_user.js",
+    "stripe:check": "node scripts/check_stripe_config.js",
+    "proxy:validate": "node scripts/proxy_pool.js validate",
+    "proxy:serve": "node scripts/proxy_pool.js serve"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

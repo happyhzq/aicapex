@@ -1,0 +1,63 @@
+{
+  "fred_series": [
+    {
+      "source_id": "fred_m2sl",
+      "series_id": "M2SL",
+      "name": "U.S. M2 money stock",
+      "signal": "liquidity_m2_yoy",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=M2SL"
+    },
+    {
+      "source_id": "fred_nfci",
+      "series_id": "NFCI",
+      "name": "Chicago Fed National Financial Conditions Index",
+      "signal": "liquidity_nfci_level",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=NFCI"
+    },
+    {
+      "source_id": "fred_brent",
+      "series_id": "DCOILBRENTEU",
+      "name": "Brent crude oil price",
+      "signal": "energy_brent_yoy",
+      "url": "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DCOILBRENTEU"
+    }
+  ],
+  "sec_company_capex": [
+    {
+      "source_id": "sec_amazon_capex",
+      "name": "Amazon capex",
+      "company": "Amazon",
+      "cik": "0001018724"
+    },
+    {
+      "source_id": "sec_microsoft_capex",
+      "name": "Microsoft capex",
+      "company": "Microsoft",
+      "cik": "0000789019"
+    },
+    {
+      "source_id": "sec_alphabet_capex",
+      "name": "Alphabet capex",
+      "company": "Alphabet",
+      "cik": "0001652044"
+    },
+    {
+      "source_id": "sec_meta_capex",
+      "name": "Meta capex",
+      "company": "Meta",
+      "cik": "0001326801"
+    },
+    {
+      "source_id": "sec_oracle_capex",
+      "name": "Oracle capex",
+      "company": "Oracle",
+      "cik": "0001341439"
+    }
+  ],
+  "model_parameters": {
+    "demand_capex_yoy_baseline": 0.22,
+    "liquidity_m2_yoy_baseline": 0.04,
+    "energy_brent_yoy_baseline": 0.0,
+    "min_successful_sources": 2
+  }
+}

@@ -8,5 +8,6 @@ __pycache__/
 
 outputs/
 tmp/
+logs/
 node_modules/
 npm-debug.log*

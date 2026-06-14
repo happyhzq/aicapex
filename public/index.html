@@ -7,32 +7,95 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="app-shell">
+    <section id="loginView" class="login-view">
+      <div class="login-panel">
+        <div class="login-header">
+          <span class="brand-mark">AI</span>
+          <div>
+            <h1 data-i18n="appTitle">CapEx Monitor</h1>
+            <p data-i18n="loginSubtitle">Sign in to view your subscription workspace.</p>
+          </div>
+        </div>
+        <div class="auth-tabs" id="authTabs">
+          <button class="active" type="button" data-auth-mode="login" data-i18n="login">Login</button>
+          <button type="button" data-auth-mode="register" data-i18n="register">Register</button>
+        </div>
+        <form id="loginForm" class="login-form">
+          <label id="registerNameLabel" class="hidden">
+            <span data-i18n="username">Username</span>
+            <input id="registerName" type="text" autocomplete="username" />
+          </label>
+          <label>
+            <span data-i18n="email">Email</span>
+            <input id="loginEmail" type="email" autocomplete="email" required />
+          </label>
+          <label>
+            <span data-i18n="password">Password</span>
+            <input id="loginPassword" type="password" autocomplete="current-password" required />
+          </label>
+          <div class="login-actions">
+            <label class="language-control">
+              <span>Language</span>
+              <select id="loginLanguageSelect" aria-label="Language">
+                <option value="zh">中文</option>
+                <option value="en">English</option>
+                <option value="es">Español</option>
+              </select>
+            </label>
+            <button type="submit" data-i18n="signIn">Sign in</button>
+          </div>
+          <button id="continueGuestButton" class="secondary-auth" type="button" data-i18n="continueAsGuest">Continue as guest</button>
+          <div id="loginError" class="form-error"></div>
+        </form>
+      </div>
+    </section>
+
+    <div id="appShell" class="app-shell hidden">
       <aside class="sidebar">
         <div class="brand">
           <span class="brand-mark">AI</span>
           <div>
-            <h1>CapEx Monitor</h1>
-            <p id="runLabel">Loading model run</p>
+            <h1 data-i18n="appTitle">CapEx Monitor</h1>
+            <p id="runLabel" data-i18n="loadingRun">Loading model run</p>
+          </div>
+        </div>
+        <div class="account-box">
+          <strong id="accountName">-</strong>
+          <span id="accountTier">-</span>
+          <div class="account-actions">
+            <label class="language-control compact">
+              <span>Language</span>
+              <select id="languageSelect" aria-label="Language">
+                <option value="zh">中文</option>
+                <option value="en">English</option>
+                <option value="es">Español</option>
+              </select>
+            </label>
+            <button id="logoutButton" type="button" data-i18n="logout">Log out</button>
           </div>
         </div>
         <nav class="nav-list" aria-label="Dashboard views">
-          <a href="#overview" class="active">Overview</a>
-          <a href="#breakdowns">Breakdowns</a>
-          <a href="#bridge">Country x Company</a>
-          <a href="#finance">Funding & ROIC</a>
-          <a href="#sources">Sources</a>
+          <a href="#overview" class="active" data-feature="overview" data-i18n="navOverview">Overview</a>
+          <a href="#breakdowns" data-feature="breakdowns" data-i18n="navBreakdowns">Breakdowns</a>
+          <a href="#bridge" data-feature="bridge" data-i18n="navBridge">Country x Company</a>
+          <a href="#finance" data-feature="finance" data-i18n="navFinance">Funding & ROIC</a>
+          <a href="#hardware" data-feature="hardware" data-i18n="navHardware">Hardware Breadth</a>
+          <a href="#audit" data-feature="artifacts" data-i18n="navAudit">Audit</a>
+          <a href="#updates" data-feature="automation" data-i18n="navUpdates">Updates</a>
+          <a href="#users" data-feature="admin" data-i18n="navUsers">Users</a>
+          <a href="#plans" data-feature="plans" data-i18n="navPlans">Plans</a>
+          <a href="#sources" data-feature="sources" data-i18n="navSources">Sources</a>
         </nav>
       </aside>
 
       <main class="dashboard">
-        <section id="overview" class="section-band">
+        <section id="overview" class="section-band" data-feature="overview">
           <div class="section-header">
             <div>
-              <p class="eyebrow">2026-2045 forecast</p>
-              <h2>Global AI Infrastructure Investment</h2>
+              <p class="eyebrow" data-i18n="overviewEyebrow">2026-2045 forecast</p>
+              <h2 data-i18n="overviewTitle">Global AI Infrastructure Investment</h2>
             </div>
-            <div class="status-pill" id="healthStatus">Connecting</div>
+            <div class="status-pill" id="healthStatus" data-i18n="connecting">Connecting</div>
           </div>
 
           <div class="kpi-grid" id="kpiGrid"></div>
@@ -40,36 +103,36 @@
           <div class="two-column">
             <div class="panel">
               <div class="panel-title">
-                <h3>Global Total</h3>
-                <span>USD bn, nominal</span>
+                <h3 data-i18n="globalTotal">Global Total</h3>
+                <span data-i18n="usdNominal">USD bn, nominal</span>
               </div>
               <div id="globalLine" class="chart"></div>
             </div>
             <div class="panel">
               <div class="panel-title">
-                <h3>2030 Mix</h3>
-                <span>Top categories</span>
+                <h3 data-i18n="mix2030">2030 Mix</h3>
+                <span data-i18n="topCategories">Top categories</span>
               </div>
               <div class="tabs" id="mixTabs">
-                <button data-dimension="country" class="active">Countries</button>
-                <button data-dimension="company">Companies</button>
-                <button data-dimension="component">Components</button>
+                <button data-dimension="country" class="active" data-i18n="countries">Countries</button>
+                <button data-dimension="company" data-i18n="companies">Companies</button>
+                <button data-dimension="component" data-i18n="components">Components</button>
               </div>
               <div id="mixBars" class="bar-list"></div>
             </div>
           </div>
         </section>
 
-        <section id="breakdowns" class="section-band">
+        <section id="breakdowns" class="section-band" data-feature="breakdowns">
           <div class="section-header compact">
             <div>
-              <p class="eyebrow">Drilldown</p>
-              <h2>Entity Component Mix</h2>
+              <p class="eyebrow" data-i18n="drilldown">Drilldown</p>
+              <h2 data-i18n="entityComponentMix">Entity Component Mix</h2>
             </div>
             <div class="toolbar">
               <select id="entityTypeSelect" aria-label="Entity type">
-                <option value="country">Country</option>
-                <option value="company">Company</option>
+                <option value="country" data-i18n="country">Country</option>
+                <option value="company" data-i18n="company">Company</option>
               </select>
               <select id="entityNameSelect" aria-label="Entity name"></select>
               <select id="yearSelect" aria-label="Forecast year"></select>
@@ -78,28 +141,28 @@
           <div class="two-column">
             <div class="panel">
               <div class="panel-title">
-                <h3 id="componentTitle">Component Allocation</h3>
-                <span>Amount by component</span>
+                <h3 id="componentTitle" data-i18n="componentAllocation">Component Allocation</h3>
+                <span data-i18n="amountByComponent">Amount by component</span>
               </div>
               <div id="componentBars" class="bar-list tall"></div>
             </div>
             <div class="panel">
               <div class="panel-title">
-                <h3>Top Forecast Rows</h3>
-                <span id="breakdownCaption">Country ranking</span>
+                <h3 data-i18n="topForecastRows">Top Forecast Rows</h3>
+                <span id="breakdownCaption" data-i18n="countryRanking">Country ranking</span>
               </div>
               <div class="tabs" id="breakdownTabs">
-                <button data-dimension="country" class="active">Country</button>
-                <button data-dimension="company">Company</button>
-                <button data-dimension="component">Component</button>
+                <button data-dimension="country" class="active" data-i18n="country">Country</button>
+                <button data-dimension="company" data-i18n="company">Company</button>
+                <button data-dimension="component" data-i18n="component">Component</button>
               </div>
               <div class="table-wrap">
                 <table>
                   <thead>
                     <tr>
-                      <th>Item</th>
-                      <th>Share</th>
-                      <th>USD bn</th>
+                      <th data-i18n="item">Item</th>
+                      <th data-i18n="share">Share</th>
+                      <th data-i18n="usdBn">USD bn</th>
                     </tr>
                   </thead>
                   <tbody id="breakdownTable"></tbody>
@@ -109,11 +172,11 @@
           </div>
         </section>
 
-        <section id="bridge" class="section-band">
+        <section id="bridge" class="section-band" data-feature="bridge">
           <div class="section-header compact">
             <div>
-              <p class="eyebrow">Attribution bridge</p>
-              <h2>Country x Company x Component</h2>
+              <p class="eyebrow" data-i18n="attributionBridge">Attribution bridge</p>
+              <h2 data-i18n="bridgeTitle">Country x Company x Component</h2>
             </div>
             <div class="toolbar">
               <select id="bridgeCountrySelect" aria-label="Bridge country"></select>
@@ -122,17 +185,17 @@
           </div>
           <div class="panel">
             <div class="panel-title">
-              <h3>Largest Allocations</h3>
-              <span id="bridgeCaption">Filtered by selected year</span>
+              <h3 data-i18n="largestAllocations">Largest Allocations</h3>
+              <span id="bridgeCaption" data-i18n="filteredByYear">Filtered by selected year</span>
             </div>
             <div class="table-wrap bridge-table">
               <table>
                 <thead>
                   <tr>
-                    <th>Country</th>
-                    <th>Company</th>
-                    <th>Component</th>
-                    <th>USD bn</th>
+                    <th data-i18n="country">Country</th>
+                    <th data-i18n="company">Company</th>
+                    <th data-i18n="component">Component</th>
+                    <th data-i18n="usdBn">USD bn</th>
                   </tr>
                 </thead>
                 <tbody id="bridgeTable"></tbody>
@@ -141,11 +204,11 @@
           </div>
         </section>
 
-        <section id="finance" class="section-band">
+        <section id="finance" class="section-band" data-feature="finance">
           <div class="section-header compact">
             <div>
-              <p class="eyebrow">Capital stack</p>
-              <h2>Funding & ROIC Proxy</h2>
+              <p class="eyebrow" data-i18n="capitalStack">Capital stack</p>
+              <h2 data-i18n="fundingRoicProxy">Funding & ROIC Proxy</h2>
             </div>
             <div class="toolbar">
               <select id="financeCompanySelect" aria-label="Finance company"></select>
@@ -154,26 +217,262 @@
           <div class="two-column">
             <div class="panel">
               <div class="panel-title">
-                <h3>Funding Mix</h3>
-                <span id="fundingCaption">Selected year</span>
+                <h3 data-i18n="fundingMix">Funding Mix</h3>
+                <span id="fundingCaption" data-i18n="selectedYear">Selected year</span>
               </div>
               <div id="fundingBars" class="bar-list"></div>
             </div>
             <div class="panel">
               <div class="panel-title">
-                <h3>ROIC Path</h3>
-                <span>Incremental project view</span>
+                <h3 data-i18n="roicPath">ROIC Path</h3>
+                <span data-i18n="incrementalProjectView">Incremental project view</span>
               </div>
               <div id="roicLine" class="chart"></div>
             </div>
           </div>
         </section>
 
-        <section id="sources" class="section-band">
+        <section id="hardware" class="section-band" data-feature="hardware">
           <div class="section-header compact">
             <div>
-              <p class="eyebrow">Traceability</p>
-              <h2>Source Register</h2>
+              <p class="eyebrow" data-i18n="hardwareEyebrow">Listed-company baskets</p>
+              <h2 data-i18n="hardwareTitle">AI Hardware Market Breadth</h2>
+            </div>
+            <div class="status-pill" id="hardwareMarketStatus" data-i18n="loading">Loading</div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">
+              <h3 data-i18n="marketBreadth">Market Breadth</h3>
+              <span data-i18n="above20Day">Above 20-day SMA</span>
+            </div>
+            <div id="hardwareScoreGrid" class="score-grid"></div>
+          </div>
+
+          <div class="panel hardware-layout">
+            <div class="panel-title">
+              <h3 data-i18n="breadthHistory">Breadth History</h3>
+              <span data-i18n="latestTradingDays">Latest trading days</span>
+            </div>
+            <div class="table-wrap hardware-breadth-table">
+              <table>
+                <thead id="hardwareBreadthHistoryHead"></thead>
+                <tbody id="hardwareBreadthHistoryTable"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="two-column hardware-layout">
+            <div class="panel">
+              <div class="panel-title">
+                <h3 data-i18n="hardwareIndex">Track Index</h3>
+                <span id="hardwareTrackMeta" data-i18n="equalWeightProxy">Weighted constituent proxy</span>
+              </div>
+              <div class="toolbar hardware-toolbar">
+                <select id="hardwareTrackSelect" aria-label="Hardware track"></select>
+              </div>
+              <div id="hardwareTrackLine" class="chart compact-chart"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">
+                <h3 data-i18n="constituents">Constituents</h3>
+                <span data-i18n="twentyDayReturn">20-day return</span>
+              </div>
+              <div class="table-wrap hardware-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th data-i18n="ticker">Ticker</th>
+                      <th data-i18n="company">Company</th>
+                      <th data-i18n="price">Price</th>
+                      <th data-i18n="sma20">20D SMA</th>
+                      <th data-i18n="sma50">50D SMA</th>
+                      <th data-i18n="twentyDayReturn">20-day return</th>
+                    </tr>
+                  </thead>
+                  <tbody id="hardwareConstituentsTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="two-column hardware-layout">
+            <div class="panel">
+              <div class="panel-title">
+                <h3 data-i18n="modelCapexSplit">Model CapEx Split</h3>
+                <span data-i18n="modelDerived">Model-derived</span>
+              </div>
+              <div id="hardwareCapexBars" class="bar-list"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">
+                <h3 data-i18n="capexSplitDetail">CapEx Split Detail</h3>
+                <span id="capexSplitTotal" data-i18n="selectedSplit">Selected split</span>
+              </div>
+              <div class="toolbar hardware-toolbar">
+                <select id="capexSplitSelect" aria-label="CapEx split"></select>
+              </div>
+              <div id="capexSplitBars" class="bar-list"></div>
+              <div class="table-wrap capex-split-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th data-i18n="item">Item</th>
+                      <th data-i18n="usdBn">USD bn</th>
+                      <th data-i18n="splitShare">Split share</th>
+                      <th data-i18n="basis">Basis</th>
+                    </tr>
+                  </thead>
+                  <tbody id="capexSplitTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="audit" class="section-band" data-feature="artifacts">
+          <div class="section-header compact">
+            <div>
+              <p class="eyebrow" data-i18n="auditEyebrow">Model audit</p>
+              <h2 data-i18n="modelAudit">External Data & Adjustment Audit</h2>
+            </div>
+          </div>
+          <div class="two-column">
+            <div class="panel">
+              <div class="panel-title">
+                <h3 data-i18n="artifactPaths">Artifact Paths</h3>
+                <span data-i18n="latestRun">Latest run</span>
+              </div>
+              <div id="artifactGrid" class="meta-grid"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">
+                <h3 data-i18n="externalSourceStatus">External Source Status</h3>
+                <span data-i18n="latestObservations">Latest observations</span>
+              </div>
+              <div class="table-wrap audit-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th data-i18n="source">Source</th>
+                      <th data-i18n="status">Status</th>
+                      <th data-i18n="latestDate">Latest date</th>
+                      <th data-i18n="latestValue">Latest value</th>
+                      <th data-i18n="yoy">YoY</th>
+                      <th data-i18n="rows">Rows</th>
+                    </tr>
+                  </thead>
+                  <tbody id="externalSourcesTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="panel audit-adjustments">
+            <div class="panel-title">
+              <h3 data-i18n="driverAdjustments">Driver Adjustments</h3>
+              <span data-i18n="modelSignalLog">Model signal log</span>
+            </div>
+            <div class="table-wrap audit-table">
+              <table>
+                <thead>
+                  <tr>
+                    <th data-i18n="driver">Driver</th>
+                    <th data-i18n="year">Year</th>
+                    <th data-i18n="baseline">Baseline</th>
+                    <th data-i18n="adjusted">Adjusted</th>
+                    <th data-i18n="delta">Delta</th>
+                    <th data-i18n="signal">Signal</th>
+                    <th data-i18n="rationale">Rationale</th>
+                  </tr>
+                </thead>
+                <tbody id="modelAdjustmentsTable"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="updates" class="section-band" data-feature="automation">
+          <div class="section-header compact">
+            <div>
+              <p class="eyebrow" data-i18n="automation">Automation</p>
+              <h2 data-i18n="dataUpdateMode">Data Update Mode</h2>
+            </div>
+            <div class="status-pill" id="updateStatus" data-i18n="loading">Loading</div>
+          </div>
+          <div class="panel">
+            <div class="update-controls">
+              <label>
+                <span data-i18n="mode">Mode</span>
+                <select id="updateModeSelect" aria-label="Update mode"></select>
+              </label>
+              <label>
+                <span data-i18n="intervalHours">Interval hours</span>
+                <input id="updateIntervalInput" type="number" min="1" max="168" step="1" value="24" />
+              </label>
+              <label>
+                <span data-i18n="schedule">Schedule</span>
+                <select id="updateScheduleType" aria-label="Update schedule">
+                  <option value="interval" data-i18n="interval">Interval</option>
+                  <option value="weekly" data-i18n="weekly">Weekly</option>
+                </select>
+              </label>
+              <label>
+                <span data-i18n="weeklyDay">Weekly day</span>
+                <select id="updateWeeklyDay" aria-label="Weekly day">
+                  <option value="0" data-i18n="sunday">Sunday</option>
+                  <option value="1" data-i18n="monday">Monday</option>
+                  <option value="2" data-i18n="tuesday">Tuesday</option>
+                  <option value="3" data-i18n="wednesday">Wednesday</option>
+                  <option value="4" data-i18n="thursday">Thursday</option>
+                  <option value="5" data-i18n="friday">Friday</option>
+                  <option value="6" data-i18n="saturday">Saturday</option>
+                </select>
+              </label>
+              <label>
+                <span data-i18n="weeklyTime">Weekly time</span>
+                <input id="updateWeeklyTime" type="time" value="00:00" />
+              </label>
+              <label class="check-control">
+                <input id="autoUpdateEnabled" type="checkbox" />
+                <span data-i18n="autoSchedule">Auto schedule</span>
+              </label>
+              <label>
+                <span data-i18n="token">Token</span>
+                <input id="updateTokenInput" type="password" autocomplete="off" />
+              </label>
+            </div>
+            <div class="action-row">
+              <button id="saveUpdateConfig" type="button" data-i18n="save">Save</button>
+              <button id="runUpdateNow" type="button" data-i18n="runNow">Run now</button>
+              <button id="refreshUpdateStatus" type="button" data-i18n="refresh">Refresh</button>
+            </div>
+            <div class="update-meta">
+              <div>
+                <span data-i18n="nextRun">Next run</span>
+                <strong id="nextUpdateAt">-</strong>
+              </div>
+              <div>
+                <span data-i18n="lastFinish">Last finish</span>
+                <strong id="lastUpdateAt">-</strong>
+              </div>
+              <div>
+                <span data-i18n="exit">Exit</span>
+                <strong id="lastUpdateExit">-</strong>
+              </div>
+              <div>
+                <span data-i18n="latestArchive">Latest archive</span>
+                <strong id="latestArchivePath">-</strong>
+              </div>
+            </div>
+            <pre id="updateOutput" class="update-output"></pre>
+          </div>
+        </section>
+
+        <section id="sources" class="section-band" data-feature="sources">
+          <div class="section-header compact">
+            <div>
+              <p class="eyebrow" data-i18n="traceability">Traceability</p>
+              <h2 data-i18n="sourceRegister">Source Register</h2>
             </div>
           </div>
           <div class="panel">
@@ -181,16 +480,95 @@
               <table>
                 <thead>
                   <tr>
-                    <th>ID</th>
-                    <th>Theme</th>
-                    <th>Key fact</th>
-                    <th>Type</th>
+                    <th data-i18n="id">ID</th>
+                    <th data-i18n="theme">Theme</th>
+                    <th data-i18n="keyFact">Key fact</th>
+                    <th data-i18n="type">Type</th>
                   </tr>
                 </thead>
                 <tbody id="sourcesTable"></tbody>
               </table>
             </div>
           </div>
+        </section>
+
+        <section id="users" class="section-band" data-feature="admin">
+          <div class="section-header compact">
+            <div>
+              <p class="eyebrow" data-i18n="administration">Administration</p>
+              <h2 data-i18n="userManagement">User Management</h2>
+            </div>
+            <div class="status-pill" id="usersStatus" data-i18n="loading">Loading</div>
+          </div>
+          <div class="two-column users-layout">
+            <div class="panel">
+              <div class="panel-title">
+                <h3 id="userFormTitle" data-i18n="createUser">Create User</h3>
+                <span id="userFormMode" data-i18n="newAccount">New account</span>
+              </div>
+              <form id="userForm" class="user-form">
+                <label>
+                  <span data-i18n="email">Email</span>
+                  <input id="managedUserEmail" type="email" autocomplete="off" required />
+                </label>
+                <label>
+                  <span data-i18n="displayName">Display name</span>
+                  <input id="managedUserName" type="text" autocomplete="off" />
+                </label>
+                <label>
+                  <span data-i18n="tier">Tier</span>
+                  <select id="managedUserTier"></select>
+                </label>
+                <label>
+                  <span data-i18n="password">Password</span>
+                  <input id="managedUserPassword" type="password" autocomplete="new-password" />
+                </label>
+                <label class="check-control">
+                  <input id="managedUserActive" type="checkbox" checked />
+                  <span data-i18n="active">Active</span>
+                </label>
+                <div class="action-row">
+                  <button id="saveManagedUser" type="submit" data-i18n="save">Save</button>
+                  <button id="resetManagedUserForm" type="button" data-i18n="newUser">New user</button>
+                  <button id="refreshUsers" type="button" data-i18n="refresh">Refresh</button>
+                </div>
+                <div id="userFormMessage" class="form-error"></div>
+              </form>
+            </div>
+            <div class="panel">
+              <div class="panel-title">
+                <h3 data-i18n="existingUsers">Existing Users</h3>
+                <span data-i18n="appUsersTable">aicapex_auth.siteusers</span>
+              </div>
+              <div class="table-wrap users-table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th data-i18n="email">Email</th>
+                      <th data-i18n="displayName">Display name</th>
+                      <th data-i18n="tier">Tier</th>
+                      <th data-i18n="status">Status</th>
+                      <th data-i18n="lastLogin">Last login</th>
+                      <th data-i18n="action">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="usersTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="plans" class="section-band" data-feature="plans">
+          <div class="section-header compact">
+            <div>
+              <p class="eyebrow" data-i18n="subscription">Subscription</p>
+              <h2 data-i18n="plansTitle">Plans</h2>
+            </div>
+            <div class="status-pill" id="subscriptionStatus">-</div>
+          </div>
+          <div id="plansGrid" class="plans-grid"></div>
+          <div id="plansMessage" class="inline-message"></div>
         </section>
       </main>
     </div>
