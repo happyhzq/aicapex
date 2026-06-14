@@ -140,13 +140,16 @@ STRIPE_SECRET_KEY=
 STRIPE_PUBLISHABLE_KEY=
 STRIPE_PRICE_PRO=
 STRIPE_PRICE_ENTERPRISE=
+STRIPE_PRICE_PRO_ONE_TIME=
+STRIPE_PRICE_ENTERPRISE_ONE_TIME=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_CHECKOUT_LOCALE=auto
-STRIPE_ALLOW_PROMOTION_CODES=false
+STRIPE_ALLOW_PROMOTION_CODES=true
 STRIPE_WEBHOOK_TOLERANCE_SECONDS=300
+STRIPE_ONE_TIME_ACCESS_DAYS=30
 ```
 
-Create recurring Stripe Price IDs for the `pro` and `enterprise` plans, enable the payment methods you want in the Stripe Dashboard, and point a webhook endpoint at:
+Create CNY recurring Stripe Price IDs for the `pro` and `enterprise` monthly plans. To support payment methods that do not work with Checkout subscription mode, also create CNY one-time Price IDs for `STRIPE_PRICE_PRO_ONE_TIME` and `STRIPE_PRICE_ENTERPRISE_ONE_TIME`; successful one-time payments grant `STRIPE_ONE_TIME_ACCESS_DAYS` days of access. Enable the payment methods and promotion codes you want in the Stripe Dashboard, and point a webhook endpoint at:
 
 ```text
 https://your-domain.example/api/stripe/webhook
@@ -161,7 +164,7 @@ customer.subscription.updated
 customer.subscription.deleted
 ```
 
-Checkout uses Stripe's dynamic payment methods. Cards are generally available; Alipay and WeChat Pay appear only when the Stripe account, customer, currency, product mode, and Dashboard configuration support them.
+Checkout uses Stripe's dynamic payment methods. Cards are generally available for subscriptions; Alipay and WeChat Pay should be offered through one-time payment Checkout when the Stripe account, customer, currency, product mode, and Dashboard configuration support them.
 
 `STRIPE_PUBLISHABLE_KEY` is safe to expose to the browser, but `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` must stay in private server environment variables and must not be committed.
 
@@ -267,8 +270,11 @@ STRIPE_SECRET_KEY=
 STRIPE_PUBLISHABLE_KEY=
 STRIPE_PRICE_PRO=
 STRIPE_PRICE_ENTERPRISE=
+STRIPE_PRICE_PRO_ONE_TIME=
+STRIPE_PRICE_ENTERPRISE_ONE_TIME=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_CHECKOUT_LOCALE=auto
-STRIPE_ALLOW_PROMOTION_CODES=false
+STRIPE_ALLOW_PROMOTION_CODES=true
 STRIPE_WEBHOOK_TOLERANCE_SECONDS=300
+STRIPE_ONE_TIME_ACCESS_DAYS=30
 ```

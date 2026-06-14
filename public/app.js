@@ -192,9 +192,13 @@ const translations = {
     upgrade: "Upgrade",
     useFreePlan: "Use free plan",
     subscribe: "Subscribe",
+    monthlySubscription: "Monthly subscription",
+    oneTimePayment: "One-time pay",
+    oneTimeAccess: "{days}-day access",
     demoUpgradeApplied: "Stripe is not configured. Demo upgrade has been applied locally.",
     paymentNotConfigured: "Payment is not configured. Please contact the administrator.",
     paymentProviderStripe: "Stripe Checkout",
+    paymentProviderStripeOneTime: "Stripe one-time Checkout",
     paymentUnavailable: "Payment not configured",
     paymentPending: "Redirecting to secure checkout.",
     manageBilling: "Manage billing",
@@ -408,9 +412,13 @@ const translations = {
     upgrade: "升级",
     useFreePlan: "使用免费套餐",
     subscribe: "订阅",
+    monthlySubscription: "月付订阅",
+    oneTimePayment: "微信/支付宝一次性支付",
+    oneTimeAccess: "{days} 天访问权",
     demoUpgradeApplied: "Stripe 未配置，已按本地演示通道开通该套餐。",
     paymentNotConfigured: "付款系统未配置，请联系管理员。",
     paymentProviderStripe: "Stripe Checkout",
+    paymentProviderStripeOneTime: "Stripe 一次性付款",
     paymentUnavailable: "付款未配置",
     paymentPending: "正在跳转到安全付款页面。",
     manageBilling: "管理账单",
@@ -616,9 +624,13 @@ const translations = {
     upgrade: "Mejorar",
     useFreePlan: "Usar plan gratis",
     subscribe: "Suscribirse",
+    monthlySubscription: "Suscripción mensual",
+    oneTimePayment: "Pago único",
+    oneTimeAccess: "Acceso de {days} días",
     demoUpgradeApplied: "Stripe no está configurado. Se aplicó una mejora demo local.",
     paymentNotConfigured: "El pago no está configurado. Contacta al administrador.",
     paymentProviderStripe: "Stripe Checkout",
+    paymentProviderStripeOneTime: "Checkout único de Stripe",
     paymentUnavailable: "Pago no configurado",
     paymentPending: "Redirigiendo al checkout seguro.",
     manageBilling: "Gestionar facturación",
@@ -756,6 +768,11 @@ function fmtUsd(value) {
 function fmtPrice(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
   return `$${Number(value).toFixed(2)}`;
+}
+
+function fmtCny(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
+  return `¥${Number(value).toLocaleString("zh-CN", { maximumFractionDigits: 0 })}`;
 }
 
 function fmtPct(value, digits = 1) {
@@ -1208,7 +1225,7 @@ function renderPlans(plans) {
     .map((plan) => {
       const isCurrent = plan.id === currentTier || (currentTier === "admin" && plan.id === "enterprise");
       const canManageBilling = isCurrent && plan.id !== "free" && Boolean(state.user?.billing_portal_available);
-      const buttonLabel =
+      const subscriptionButtonLabel =
         plan.id === "free"
           ? t("useFreePlan")
           : canManageBilling
@@ -1218,21 +1235,42 @@ function renderPlans(plans) {
               : state.user?.is_guest
                 ? t("signInRegister")
                 : t("subscribe");
+      const oneTimeButtonLabel = state.user?.is_guest ? t("signInRegister") : t("oneTimePayment");
+      const monthlyPrice = Number(plan.price_monthly_cny || 0);
+      const oneTimePrice = Number(plan.price_one_time_cny || plan.price_monthly_cny || 0);
+      const accessDays = Number(plan.one_time_access_days || 30);
+      const monthlyAvailable = plan.id === "free" || Boolean(plan.stripe_price_configured);
+      const oneTimeAvailable = Boolean(plan.stripe_one_time_price_configured);
       return `
         <section class="plan-card">
           <div class="plan-head">
             <h3>${esc(plan.name || t(`tier_${plan.id}`))}</h3>
-            <strong>${Number(plan.price_monthly_usd || 0) === 0 ? "$0" : `$${esc(plan.price_monthly_usd)}`}</strong>
-            <span>/ month</span>
+            <strong>${monthlyPrice === 0 ? fmtCny(0) : fmtCny(monthlyPrice)}</strong>
+            <span>/ ${esc(t("monthlySubscription"))}</span>
           </div>
           <p>${esc(plan.audience || "")}</p>
           <ul>
             ${(plan.features || []).map((feature) => `<li>${esc(feature)}</li>`).join("")}
           </ul>
-          <button class="plan-button" type="button" ${canManageBilling ? "data-billing-portal=\"true\"" : `data-plan-id="${esc(plan.id)}"`}${isCurrent && !canManageBilling ? " disabled" : ""}>
-            ${esc(buttonLabel)}
-          </button>
-          <small>${esc(plan.id === "free" ? t("tier_free") : plan.stripe_price_configured ? t("paymentProviderStripe") : t("paymentUnavailable"))}</small>
+          <div class="plan-actions">
+            <button class="plan-button" type="button" ${canManageBilling ? "data-billing-portal=\"true\"" : `data-plan-id="${esc(plan.id)}" data-checkout-mode="subscription"`}${(isCurrent && !canManageBilling) || !monthlyAvailable ? " disabled" : ""}>
+              ${esc(subscriptionButtonLabel)}
+            </button>
+            ${
+              plan.id === "free"
+                ? ""
+                : `<button class="plan-button secondary" type="button" data-plan-id="${esc(plan.id)}" data-checkout-mode="one_time"${isCurrent || !oneTimeAvailable ? " disabled" : ""}>
+                    ${esc(oneTimeButtonLabel)} · ${esc(fmtCny(oneTimePrice))} · ${esc(t("oneTimeAccess", { days: accessDays }))}
+                  </button>`
+            }
+          </div>
+          <small>${esc(
+            plan.id === "free"
+              ? t("tier_free")
+              : plan.stripe_price_configured && plan.stripe_one_time_price_configured
+                ? `${t("paymentProviderStripe")} / ${t("paymentProviderStripeOneTime")}`
+                : t("paymentUnavailable"),
+          )}</small>
         </section>`;
     })
     .join("");
@@ -1261,7 +1299,7 @@ async function openBillingPortal() {
   }
 }
 
-async function startCheckout(planId) {
+async function startCheckout(planId, checkoutMode = "subscription") {
   $("plansMessage").textContent = "";
   if (state.user?.is_guest && planId !== "free") {
     $("plansMessage").textContent = t("registerBeforeSubscribe");
@@ -1274,6 +1312,7 @@ async function startCheckout(planId) {
       method: "POST",
       body: JSON.stringify({
         plan_id: planId,
+        checkout_mode: checkoutMode,
         success_url: `${window.location.origin}/?checkout=success`,
         cancel_url: `${window.location.origin}/?checkout=cancel`,
         locale: state.language,
@@ -1861,7 +1900,7 @@ function wireDashboardControls() {
     }
     const button = event.target.closest("button[data-plan-id]");
     if (!button || !can("plans")) return;
-    await startCheckout(button.dataset.planId);
+    await startCheckout(button.dataset.planId, button.dataset.checkoutMode || "subscription");
   });
 }
 

@@ -55,6 +55,7 @@ const sessionTtlSeconds = toInt(process.env.AUTH_SESSION_TTL_SECONDS, 7 * 24 * 6
 });
 const authMinPasswordLength = toInt(process.env.AUTH_MIN_PASSWORD_LENGTH, 6, { min: 4, max: 128 });
 const stripeWebhookToleranceSeconds = toInt(process.env.STRIPE_WEBHOOK_TOLERANCE_SECONDS, 300, { min: 30, max: 3600 });
+const stripeOneTimeAccessDays = toInt(process.env.STRIPE_ONE_TIME_ACCESS_DAYS, 30, { min: 1, max: 3660 });
 
 app.use(express.static(publicDir));
 
@@ -160,10 +161,18 @@ function appTierForUser(row) {
   if (!row) return "free";
   const role = String(row.role || "").toLowerCase();
   if (role === "admin") return "admin";
+  if (subscriptionExpired(row)) return "free";
   const tier = normalizeStoredTier(row.tier, "free");
   if (tier === "enterprise") return "enterprise";
   if (tier === "pro") return "pro";
   return "free";
+}
+
+function subscriptionExpired(row) {
+  const value = row?.subscription_current_period_end;
+  if (!value) return false;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) && timestamp <= Date.now();
 }
 
 function storedTierFromAppTier(tier) {
@@ -190,6 +199,7 @@ function normalizeSubscriptionStatus(value, fallback = "active") {
 function publicUser(row) {
   if (!row) return null;
   const tier = appTierForUser(row);
+  const expired = tier === "free" && normalizeStoredTier(row.tier, "free") !== "free" && subscriptionExpired(row);
   return {
     user_id: row.user_id ?? row.id ?? 0,
     username: row.username || row.display_name || row.email || "guest",
@@ -197,7 +207,8 @@ function publicUser(row) {
     display_name: row.display_name || row.username || row.email || "Guest",
     role: normalizeRole(row.role),
     tier,
-    subscription_status: row.subscription_status || (tier === "free" ? "guest" : "active"),
+    subscription_status: expired ? "expired" : row.subscription_status || (tier === "free" ? "guest" : "active"),
+    subscription_current_period_end: row.subscription_current_period_end || null,
     stripe_subscription_status: row.stripe_subscription_status || null,
     billing_portal_available: Boolean(row.stripe_customer_id),
     is_guest: Boolean(row.is_guest),
@@ -215,6 +226,7 @@ function guestUser() {
     role: "viewer",
     tier: "free",
     subscription_status: "guest",
+    subscription_current_period_end: null,
     is_guest: true,
   };
 }
@@ -265,7 +277,8 @@ async function authUserFromRequest(req) {
   if (!sessionToken) return null;
   const rows = await query(
 	    `SELECT u.id, u.id AS user_id, u.username, u.email, u.username AS display_name,
-	            u.role, u.tier, u.subscription_status, u.stripe_customer_id, u.stripe_subscription_status
+	            u.role, u.tier, u.subscription_status, u.subscription_current_period_end,
+	            u.stripe_customer_id, u.stripe_subscription_status
 	     FROM ${authTable("usersessions")} s
 	     JOIN ${authTable("siteusers")} u ON u.id = s.user_id
      WHERE s.token_hash = ? AND s.expires_at > CURRENT_TIMESTAMP
@@ -493,6 +506,10 @@ function stripeCheckoutConfiguredForPlan(planId) {
   return Boolean(stripeSecretConfigured() && stripeWebhookConfigured() && stripePriceForPlan(planId));
 }
 
+function stripeOneTimeCheckoutConfiguredForPlan(planId) {
+  return Boolean(stripeSecretConfigured() && stripeWebhookConfigured() && stripeOneTimePriceForPlan(planId));
+}
+
 function stripeConfigStatus() {
   return {
     publishable_key_configured: Boolean(process.env.STRIPE_PUBLISHABLE_KEY),
@@ -503,6 +520,11 @@ function stripeConfigStatus() {
       pro: Boolean(stripePriceForPlan("pro")),
       enterprise: Boolean(stripePriceForPlan("enterprise")),
     },
+    one_time_prices: {
+      pro: Boolean(stripeOneTimePriceForPlan("pro")),
+      enterprise: Boolean(stripeOneTimePriceForPlan("enterprise")),
+    },
+    promotion_codes_enabled: process.env.STRIPE_ALLOW_PROMOTION_CODES === "true",
   };
 }
 
@@ -514,6 +536,15 @@ function stripeTimestampToMysql(value) {
   const timestamp = Number(value || 0);
   if (!Number.isFinite(timestamp) || timestamp <= 0) return null;
   return new Date(timestamp * 1000).toISOString().slice(0, 19).replace("T", " ");
+}
+
+function mysqlDateAfterDays(days) {
+  const timestamp = Date.now() + Number(days || 0) * 24 * 60 * 60 * 1000;
+  return new Date(timestamp).toISOString().slice(0, 19).replace("T", " ");
+}
+
+function checkoutMode(value) {
+  return ["one_time", "payment"].includes(String(value || "").toLowerCase()) ? "one_time" : "subscription";
 }
 
 function normalizeStripeLocale(value) {
@@ -607,17 +638,27 @@ async function userIdForStripeSubscription(subscription) {
 }
 
 async function handleStripeCheckoutCompleted(session) {
-  if (session.mode !== "subscription") return;
   const planId = paidTierFromStripeMetadata(session.metadata);
   const userId = Number.parseInt(session.metadata?.user_id || session.client_reference_id, 10);
   if (!planId || !Number.isFinite(userId) || userId <= 0) return;
-  if (session.payment_status && session.payment_status !== "paid") return;
-  await setUserSubscription(userId, planId, "active", {
-    customerId: stripeId(session.customer),
-    subscriptionId: stripeId(session.subscription),
-    checkoutSessionId: stripeId(session.id),
-    stripeSubscriptionStatus: session.status || "complete",
-  });
+  if (session.payment_status && !["paid", "no_payment_required"].includes(session.payment_status)) return;
+  if (session.mode === "subscription") {
+    await setUserSubscription(userId, planId, "active", {
+      customerId: stripeId(session.customer),
+      subscriptionId: stripeId(session.subscription),
+      checkoutSessionId: stripeId(session.id),
+      stripeSubscriptionStatus: session.status || "complete",
+    });
+  } else if (session.mode === "payment") {
+    const accessDays = toInt(session.metadata?.access_days, stripeOneTimeAccessDays, { min: 1, max: 3660 });
+    await setUserSubscription(userId, planId, "active", {
+      customerId: stripeId(session.customer),
+      subscriptionId: null,
+      checkoutSessionId: stripeId(session.id),
+      stripeSubscriptionStatus: session.payment_status || session.status || "complete",
+      currentPeriodEnd: mysqlDateAfterDays(accessDays),
+    });
+  }
 }
 
 async function handleStripeSubscriptionChanged(subscription) {
@@ -667,7 +708,8 @@ app.post(
 
     const rows = await query(
       `SELECT id, id AS user_id, username, email, username AS display_name,
-              password_hash, role, tier, subscription_status, stripe_customer_id, stripe_subscription_status
+              password_hash, role, tier, subscription_status, subscription_current_period_end,
+              stripe_customer_id, stripe_subscription_status
        FROM ${authTable("siteusers")}
        WHERE username = ? OR email = ?
        LIMIT 1`,
@@ -717,7 +759,8 @@ app.post(
 
     const rows = await query(
       `SELECT id, id AS user_id, username, email, username AS display_name,
-              role, tier, subscription_status, stripe_customer_id, stripe_subscription_status
+              role, tier, subscription_status, subscription_current_period_end,
+              stripe_customer_id, stripe_subscription_status
        FROM ${authTable("siteusers")}
        WHERE username = ?
        LIMIT 1`,
@@ -759,21 +802,30 @@ const planDefinitions = [
   {
     id: "free",
     name: "Free",
-    price_monthly_usd: 0,
+    currency: "cny",
+    price_monthly_cny: 0,
+    price_one_time_cny: 0,
+    one_time_access_days: stripeOneTimeAccessDays,
     audience: "Public preview and product trial.",
     features: ["Global overview", "2030 mix snapshot", "Limited dashboard access"],
   },
   {
     id: "pro",
     name: "Pro",
-    price_monthly_usd: 49,
+    currency: "cny",
+    price_monthly_cny: 49,
+    price_one_time_cny: 49,
+    one_time_access_days: stripeOneTimeAccessDays,
     audience: "Individual investors and analysts.",
     features: ["Entity drilldowns", "Country-company bridge", "Funding and ROIC", "AI hardware breadth"],
   },
   {
     id: "enterprise",
     name: "Enterprise",
-    price_monthly_usd: 499,
+    currency: "cny",
+    price_monthly_cny: 499,
+    price_one_time_cny: 499,
+    one_time_access_days: stripeOneTimeAccessDays,
     audience: "Teams that need full model output and audit trails.",
     features: ["All Pro features", "Source register", "Model audit", "External data and update controls by admin"],
   },
@@ -784,10 +836,16 @@ function stripePriceForPlan(planId) {
   return process.env[key] || "";
 }
 
+function stripeOneTimePriceForPlan(planId) {
+  const key = `STRIPE_PRICE_${String(planId || "").toUpperCase()}_ONE_TIME`;
+  return process.env[key] || "";
+}
+
 function publicPlan(plan) {
   return {
     ...plan,
     stripe_price_configured: Boolean(stripePriceForPlan(plan.id)),
+    stripe_one_time_price_configured: Boolean(stripeOneTimePriceForPlan(plan.id)),
   };
 }
 
@@ -816,8 +874,9 @@ async function setUserSubscription(userId, tier, subscriptionStatus = "active", 
     params,
   );
   const rows = await query(
-    `SELECT id, id AS user_id, username, email, username AS display_name,
-            role, tier, subscription_status, stripe_customer_id, stripe_subscription_status
+        `SELECT id, id AS user_id, username, email, username AS display_name,
+            role, tier, subscription_status, subscription_current_period_end,
+            stripe_customer_id, stripe_subscription_status
      FROM ${authTable("siteusers")}
      WHERE id = ?
      LIMIT 1`,
@@ -832,7 +891,13 @@ app.get(
     const stripeStatus = stripeConfigStatus();
     res.json({
       plans: planDefinitions.map(publicPlan),
-      stripe_configured: Boolean(stripeStatus.checkout_configured && stripeStatus.prices.pro && stripeStatus.prices.enterprise),
+      stripe_configured: Boolean(
+        stripeStatus.checkout_configured &&
+          stripeStatus.prices.pro &&
+          stripeStatus.prices.enterprise &&
+          stripeStatus.one_time_prices.pro &&
+          stripeStatus.one_time_prices.enterprise,
+      ),
       stripe: stripeStatus,
     });
   }),
@@ -842,6 +907,7 @@ app.post(
   "/api/subscriptions/checkout",
   asyncRoute(async (req, res) => {
     const planId = normalizeTier(req.body?.plan_id || "free", "free");
+    const mode = checkoutMode(req.body?.checkout_mode || req.body?.mode);
     if (!["free", "pro", "enterprise"].includes(planId)) {
       return res.status(400).json({ error: "Invalid plan" });
     }
@@ -853,10 +919,10 @@ app.post(
       return res.json({ mode: "local", plan_id: "free", user, checkout_url: req.body?.success_url || "/" });
     }
 
-    const priceId = stripePriceForPlan(planId);
+    const priceId = mode === "one_time" ? stripeOneTimePriceForPlan(planId) : stripePriceForPlan(planId);
     const successUrl = String(req.body?.success_url || `${req.protocol}://${req.get("host")}/?checkout=success`);
     const cancelUrl = String(req.body?.cancel_url || `${req.protocol}://${req.get("host")}/?checkout=cancel`);
-    if (!stripeCheckoutConfiguredForPlan(planId)) {
+    if (mode === "one_time" ? !stripeOneTimeCheckoutConfiguredForPlan(planId) : !stripeCheckoutConfiguredForPlan(planId)) {
       return res.status(503).json({
         error: "Payment is not fully configured. Please contact the administrator.",
         error_code: "payment_not_configured",
@@ -869,23 +935,35 @@ app.post(
     );
     const customerId = stripeId(userRows[0]?.stripe_customer_id);
     const params = new URLSearchParams();
-    params.set("mode", "subscription");
+    params.set("mode", mode === "one_time" ? "payment" : "subscription");
     params.set("success_url", successUrl);
     params.set("cancel_url", cancelUrl);
-    if (customerId) params.set("customer", customerId);
-    else params.set("customer_email", req.user.email || "");
+    if (customerId) {
+      params.set("customer", customerId);
+    } else {
+      params.set("customer_email", req.user.email || "");
+      if (mode === "one_time") params.set("customer_creation", "always");
+    }
     params.set("client_reference_id", String(req.user.user_id));
     params.set("metadata[user_id]", String(req.user.user_id));
     params.set("metadata[plan_id]", planId);
-    params.set("subscription_data[metadata][user_id]", String(req.user.user_id));
-    params.set("subscription_data[metadata][plan_id]", planId);
+    params.set("metadata[checkout_mode]", mode);
+    if (mode === "one_time") {
+      params.set("metadata[access_days]", String(stripeOneTimeAccessDays));
+      params.set("payment_intent_data[metadata][user_id]", String(req.user.user_id));
+      params.set("payment_intent_data[metadata][plan_id]", planId);
+      params.set("payment_intent_data[metadata][checkout_mode]", mode);
+    } else {
+      params.set("subscription_data[metadata][user_id]", String(req.user.user_id));
+      params.set("subscription_data[metadata][plan_id]", planId);
+    }
     params.set("line_items[0][price]", priceId);
     params.set("line_items[0][quantity]", "1");
     params.set("locale", normalizeStripeLocale(req.body?.locale || process.env.STRIPE_CHECKOUT_LOCALE));
     if (process.env.STRIPE_ALLOW_PROMOTION_CODES === "true") params.set("allow_promotion_codes", "true");
 
     const body = await stripeRequest("checkout/sessions", params);
-    res.json({ mode: "stripe", plan_id: planId, checkout_url: body.url, session_id: body.id });
+    res.json({ mode: "stripe", checkout_mode: mode, plan_id: planId, checkout_url: body.url, session_id: body.id });
   }),
 );
 
@@ -951,6 +1029,7 @@ function publicManagedUser(row) {
     role: normalizeRole(row.role),
     tier,
     subscription_status: row.subscription_status || "active",
+    subscription_current_period_end: row.subscription_current_period_end || null,
     active: row.subscription_status !== "disabled",
     created_at: row.created_at,
     updated_at: row.updated_at,
@@ -998,8 +1077,8 @@ app.get(
   "/api/users",
   asyncRoute(async (req, res) => {
     const rows = await query(
-      `SELECT id, username, email, username AS display_name, role, tier, subscription_status,
-              created_at, updated_at, last_login_at
+    `SELECT id, username, email, username AS display_name, role, tier, subscription_status,
+              subscription_current_period_end, created_at, updated_at, last_login_at
        FROM ${authTable("siteusers")}
        ORDER BY created_at DESC`,
     );
@@ -1036,7 +1115,7 @@ app.post(
     );
     const rows = await query(
       `SELECT id, username, email, username AS display_name, role, tier, subscription_status,
-              created_at, updated_at, last_login_at
+              subscription_current_period_end, created_at, updated_at, last_login_at
        FROM ${authTable("siteusers")}
        WHERE email = ?
        LIMIT 1`,
@@ -1056,7 +1135,7 @@ app.patch(
       throw error;
     }
     const currentRows = await query(
-      `SELECT id, username, email, role, tier, subscription_status FROM ${authTable("siteusers")} WHERE id = ? LIMIT 1`,
+      `SELECT id, username, email, role, tier, subscription_status, subscription_current_period_end FROM ${authTable("siteusers")} WHERE id = ? LIMIT 1`,
       [userId],
     );
     if (!currentRows.length) {
@@ -1089,7 +1168,7 @@ app.patch(
     await query(`UPDATE ${authTable("siteusers")} SET ${updates.join(", ")} WHERE id = ?`, params);
     const rows = await query(
       `SELECT id, username, email, username AS display_name, role, tier, subscription_status,
-              created_at, updated_at, last_login_at
+              subscription_current_period_end, created_at, updated_at, last_login_at
        FROM ${authTable("siteusers")}
        WHERE id = ?
        LIMIT 1`,

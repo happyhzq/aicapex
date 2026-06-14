@@ -771,14 +771,27 @@ td.num {
   font-size: 13px;
 }
 
-.plan-button {
+.plan-actions {
+  display: grid;
+  gap: 8px;
   align-self: end;
+}
+
+.plan-button {
   height: 36px;
   border: 1px solid var(--accent);
   border-radius: 6px;
   background: var(--accent);
   color: #fff;
   cursor: pointer;
+}
+
+.plan-button.secondary {
+  min-height: 40px;
+  height: auto;
+  border-color: var(--line);
+  background: #fff;
+  color: var(--ink);
 }
 
 .plan-button:disabled {

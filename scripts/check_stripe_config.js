@@ -24,7 +24,7 @@ function requirePrefix(name, prefix) {
   return { ok: true, message: `${name} present (${masked(value)})` };
 }
 
-async function fetchStripePrice(name, priceId) {
+async function fetchStripePrice(name, priceId, expectedType = "recurring") {
   const secret = String(process.env.STRIPE_SECRET_KEY || "").trim();
   if (!secret || !priceId) return null;
   const response = await fetch(`https://api.stripe.com/v1/prices/${encodeURIComponent(priceId)}`, {
@@ -35,10 +35,13 @@ async function fetchStripePrice(name, priceId) {
     return { ok: false, message: `${name} could not be fetched: ${body.error?.message || response.status}` };
   }
   if (!body.active) return { ok: false, message: `${name} is not active` };
-  if (body.type !== "recurring") return { ok: false, message: `${name} must be a recurring price` };
+  if (body.type !== expectedType) return { ok: false, message: `${name} must be a ${expectedType} price` };
+  if (expectedType === "recurring" && body.recurring?.interval !== "month") {
+    return { ok: false, message: `${name} must be a monthly recurring price` };
+  }
   return {
     ok: true,
-    message: `${name} active recurring price (${body.currency || "unknown"} ${body.unit_amount ?? "unknown"})`,
+    message: `${name} active ${body.type} price (${body.currency || "unknown"} ${body.unit_amount ?? "unknown"})`,
   };
 }
 
@@ -48,11 +51,18 @@ async function main() {
     requirePrefix("STRIPE_SECRET_KEY", "sk_"),
     requirePrefix("STRIPE_PRICE_PRO", "price_"),
     requirePrefix("STRIPE_PRICE_ENTERPRISE", "price_"),
+    requirePrefix("STRIPE_PRICE_PRO_ONE_TIME", "price_"),
+    requirePrefix("STRIPE_PRICE_ENTERPRISE_ONE_TIME", "price_"),
     requirePrefix("STRIPE_WEBHOOK_SECRET", "whsec_"),
   ];
 
-  for (const name of ["STRIPE_PRICE_PRO", "STRIPE_PRICE_ENTERPRISE"]) {
-    const remote = await fetchStripePrice(name, String(process.env[name] || "").trim());
+  for (const [name, expectedType] of [
+    ["STRIPE_PRICE_PRO", "recurring"],
+    ["STRIPE_PRICE_ENTERPRISE", "recurring"],
+    ["STRIPE_PRICE_PRO_ONE_TIME", "one_time"],
+    ["STRIPE_PRICE_ENTERPRISE_ONE_TIME", "one_time"],
+  ]) {
+    const remote = await fetchStripePrice(name, String(process.env[name] || "").trim(), expectedType);
     if (remote) checks.push(remote);
   }
 
