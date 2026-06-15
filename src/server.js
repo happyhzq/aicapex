@@ -2213,6 +2213,9 @@ async function saveHardwareMarketSnapshot(payload, trigger = "manual") {
     ],
   );
 
+  await query("DELETE FROM hardware_market_track_snapshots WHERE snapshot_date = ?", [snapshotDate]);
+  await query("DELETE FROM hardware_market_constituent_snapshots WHERE snapshot_date = ?", [snapshotDate]);
+
   for (const track of payload.tracks || []) {
     const historyRow = (track.breadth_history || []).find((row) => row.date === snapshotDate);
     const score = historyRow?.score ?? track.score;
