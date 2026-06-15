@@ -58,36 +58,37 @@
       "track_id": "accelerators",
       "display_name": "AI accelerators and ASICs",
       "short_name": "Accelerators",
-      "description": "Public-company basket for GPU, ASIC, NPU, accelerator silicon, and advanced foundry exposure.",
+      "description": "Public-company basket for GPU, ASIC, NPU, custom accelerator silicon, and advanced foundry / packaging exposure.",
       "components": [
         { "component_name": "Accelerator cards (GPU/ASIC/NPU, ex-HBM)", "weight": 1.0 }
       ],
       "constituents": [
-        { "symbol": "NVDA", "company_name": "NVIDIA", "role": "GPU and AI systems", "weight": 0.28 },
-        { "symbol": "AMD", "company_name": "Advanced Micro Devices", "role": "GPU and CPU accelerators", "weight": 0.18 },
-        { "symbol": "AVGO", "company_name": "Broadcom", "role": "Custom AI ASICs and connectivity silicon", "weight": 0.18 },
-        { "symbol": "MRVL", "company_name": "Marvell Technology", "role": "Custom silicon and networking silicon", "weight": 0.13 },
-        { "symbol": "TSM", "company_name": "Taiwan Semiconductor Manufacturing", "role": "Advanced foundry and packaging", "weight": 0.15 },
-        { "symbol": "INTC", "company_name": "Intel", "role": "CPU, accelerators, foundry optionality", "weight": 0.08 }
+        { "symbol": "NVDA", "company_name": "NVIDIA", "role": "GPU, accelerator systems, and AI networking platform pull-through", "weight": 0.27 },
+        { "symbol": "AVGO", "company_name": "Broadcom", "role": "Custom AI ASICs and accelerator connectivity silicon", "weight": 0.2 },
+        { "symbol": "TSM", "company_name": "Taiwan Semiconductor Manufacturing", "role": "Leading-edge foundry and CoWoS / advanced packaging", "weight": 0.18 },
+        { "symbol": "AMD", "company_name": "Advanced Micro Devices", "role": "GPU and CPU accelerator platforms", "weight": 0.16 },
+        { "symbol": "MRVL", "company_name": "Marvell Technology", "role": "Custom AI silicon and high-speed data infrastructure chips", "weight": 0.11 },
+        { "symbol": "INTC", "company_name": "Intel", "role": "Server CPUs, accelerators, and foundry optionality", "weight": 0.05 },
+        { "symbol": "ASML", "company_name": "ASML Holding", "role": "EUV lithography capacity for leading-edge AI silicon", "weight": 0.03 }
       ]
     },
     {
       "track_id": "memory",
       "display_name": "HBM, DRAM, and CXL memory",
       "short_name": "Memory",
-      "description": "Public-company basket for HBM, DRAM, NAND-adjacent memory, CXL controllers, and memory interface IP.",
+      "description": "Public-company basket for HBM, DRAM, NAND / SSD, CXL controllers, and memory interface IP.",
       "components": [
         { "component_name": "HBM", "weight": 1.0 },
         { "component_name": "DDR / LPDDR system memory", "weight": 1.0 },
         { "component_name": "CXL expansion memory", "weight": 1.0 }
       ],
       "constituents": [
-        { "symbol": "MU", "company_name": "Micron Technology", "role": "HBM, DRAM, NAND", "weight": 0.28 },
-        { "symbol": "005930.KS", "company_name": "Samsung Electronics", "role": "HBM, DRAM, NAND", "weight": 0.22 },
-        { "symbol": "000660.KS", "company_name": "SK Hynix", "role": "HBM and DRAM", "weight": 0.22 },
-        { "symbol": "RMBS", "company_name": "Rambus", "role": "Memory interface IP", "weight": 0.12 },
-        { "symbol": "ALAB", "company_name": "Astera Labs", "role": "CXL and PCIe connectivity", "weight": 0.1 },
-        { "symbol": "WDC", "company_name": "Western Digital", "role": "NAND and storage memory", "weight": 0.06 }
+        { "symbol": "MU", "company_name": "Micron Technology", "role": "HBM, DRAM, NAND, and data-center SSDs", "weight": 0.26 },
+        { "symbol": "000660.KS", "company_name": "SK Hynix", "role": "HBM and DRAM leadership", "weight": 0.25 },
+        { "symbol": "005930.KS", "company_name": "Samsung Electronics", "role": "HBM, DRAM, NAND, and advanced memory", "weight": 0.22 },
+        { "symbol": "SNDK", "company_name": "SanDisk", "role": "NAND flash and enterprise SSD exposure", "weight": 0.12 },
+        { "symbol": "RMBS", "company_name": "Rambus", "role": "Memory interface IP", "weight": 0.08 },
+        { "symbol": "ALAB", "company_name": "Astera Labs", "role": "CXL and memory-expansion connectivity", "weight": 0.07 }
       ]
     },
     {
@@ -100,12 +101,14 @@
         { "component_name": "CPU", "weight": 1.0 }
       ],
       "constituents": [
-        { "symbol": "DELL", "company_name": "Dell Technologies", "role": "AI servers and enterprise systems", "weight": 0.23 },
-        { "symbol": "HPE", "company_name": "Hewlett Packard Enterprise", "role": "Servers and HPC systems", "weight": 0.18 },
+        { "symbol": "DELL", "company_name": "Dell Technologies", "role": "AI servers and enterprise systems", "weight": 0.22 },
         { "symbol": "SMCI", "company_name": "Super Micro Computer", "role": "AI server integration", "weight": 0.18 },
-        { "symbol": "INTC", "company_name": "Intel", "role": "Server CPUs", "weight": 0.14 },
-        { "symbol": "AMD", "company_name": "Advanced Micro Devices", "role": "Server CPUs and accelerators", "weight": 0.17 },
-        { "symbol": "ARW", "company_name": "Arrow Electronics", "role": "Systems distribution and supply chain", "weight": 0.1 }
+        { "symbol": "HPE", "company_name": "Hewlett Packard Enterprise", "role": "Servers, HPC systems, and AI factory platforms", "weight": 0.14 },
+        { "symbol": "CLS", "company_name": "Celestica", "role": "Hyperscale server and hardware integration", "weight": 0.13 },
+        { "symbol": "2382.TW", "company_name": "Quanta Computer", "role": "AI server ODM and rack-scale manufacturing", "weight": 0.12 },
+        { "symbol": "6669.TW", "company_name": "Wiwynn", "role": "Cloud and AI server ODM", "weight": 0.1 },
+        { "symbol": "AMD", "company_name": "Advanced Micro Devices", "role": "Server CPUs and accelerator platforms", "weight": 0.07 },
+        { "symbol": "INTC", "company_name": "Intel", "role": "Server CPUs", "weight": 0.04 }
       ]
     },
     {
@@ -119,12 +122,13 @@
         { "component_name": "Other storage systems", "weight": 1.0 }
       ],
       "constituents": [
-        { "symbol": "WDC", "company_name": "Western Digital", "role": "NAND and HDD storage", "weight": 0.23 },
+        { "symbol": "WDC", "company_name": "Western Digital", "role": "HDD and mass-capacity cloud storage", "weight": 0.22 },
         { "symbol": "STX", "company_name": "Seagate Technology", "role": "HDD storage", "weight": 0.2 },
-        { "symbol": "PSTG", "company_name": "Pure Storage", "role": "All-flash storage arrays", "weight": 0.19 },
-        { "symbol": "NTAP", "company_name": "NetApp", "role": "Enterprise storage systems", "weight": 0.16 },
-        { "symbol": "MU", "company_name": "Micron Technology", "role": "NAND", "weight": 0.12 },
-        { "symbol": "DELL", "company_name": "Dell Technologies", "role": "Storage systems", "weight": 0.1 }
+        { "symbol": "SNDK", "company_name": "SanDisk", "role": "NAND flash and enterprise SSDs", "weight": 0.18 },
+        { "symbol": "PSTG", "company_name": "Pure Storage", "role": "All-flash storage arrays", "weight": 0.16 },
+        { "symbol": "NTAP", "company_name": "NetApp", "role": "Enterprise AI data infrastructure", "weight": 0.13 },
+        { "symbol": "DELL", "company_name": "Dell Technologies", "role": "Storage systems and AI factory infrastructure", "weight": 0.08 },
+        { "symbol": "MU", "company_name": "Micron Technology", "role": "Data-center SSD and NAND supply", "weight": 0.03 }
       ]
     },
     {
@@ -137,12 +141,14 @@
         { "component_name": "Fiber / cabling", "weight": 0.3 }
       ],
       "constituents": [
-        { "symbol": "ANET", "company_name": "Arista Networks", "role": "Cloud data-center Ethernet", "weight": 0.24 },
-        { "symbol": "CSCO", "company_name": "Cisco Systems", "role": "Switching, routing, and optics", "weight": 0.18 },
+        { "symbol": "ANET", "company_name": "Arista Networks", "role": "Cloud data-center Ethernet and AI fabrics", "weight": 0.22 },
         { "symbol": "AVGO", "company_name": "Broadcom", "role": "Switch ASICs and NIC silicon", "weight": 0.18 },
-        { "symbol": "MRVL", "company_name": "Marvell Technology", "role": "Networking silicon", "weight": 0.14 },
-        { "symbol": "NVDA", "company_name": "NVIDIA", "role": "InfiniBand and Ethernet AI fabrics", "weight": 0.16 },
-        { "symbol": "CIEN", "company_name": "Ciena", "role": "Optical networking systems", "weight": 0.1 }
+        { "symbol": "NVDA", "company_name": "NVIDIA", "role": "InfiniBand and Ethernet AI fabrics", "weight": 0.14 },
+        { "symbol": "CSCO", "company_name": "Cisco Systems", "role": "Switching, routing, optics, and AI-ready data centers", "weight": 0.13 },
+        { "symbol": "MRVL", "company_name": "Marvell Technology", "role": "Networking silicon and custom data infrastructure chips", "weight": 0.11 },
+        { "symbol": "ALAB", "company_name": "Astera Labs", "role": "PCIe, CXL, Ethernet, and rack-scale connectivity", "weight": 0.1 },
+        { "symbol": "CRDO", "company_name": "Credo Technology", "role": "High-speed connectivity, retimers, and active electrical cables", "weight": 0.07 },
+        { "symbol": "CIEN", "company_name": "Ciena", "role": "Optical networking systems and DCI", "weight": 0.05 }
       ]
     },
     {
@@ -153,42 +159,60 @@
       "optical_derived": true,
       "components": [],
       "constituents": [
-        { "symbol": "LITE", "company_name": "Lumentum", "role": "Lasers, transceivers, optical engines", "weight": 0.18 },
-        { "symbol": "COHR", "company_name": "Coherent", "role": "Optical components and transceivers", "weight": 0.18 },
+        { "symbol": "LITE", "company_name": "Lumentum", "role": "Lasers, transceivers, optical engines, and optical switching", "weight": 0.18 },
+        { "symbol": "COHR", "company_name": "Coherent", "role": "Optical components, transceivers, and datacenter photonics", "weight": 0.18 },
         { "symbol": "FN", "company_name": "Fabrinet", "role": "Optical module manufacturing", "weight": 0.14 },
-        { "symbol": "CIEN", "company_name": "Ciena", "role": "Coherent optical systems", "weight": 0.12 },
-        { "symbol": "AAOI", "company_name": "Applied Optoelectronics", "role": "Data-center optical modules", "weight": 0.1 },
-        { "symbol": "GLW", "company_name": "Corning", "role": "Fiber and optical connectivity", "weight": 0.1 },
-        { "symbol": "AVGO", "company_name": "Broadcom", "role": "Optical DSP, CPO, EML/PD", "weight": 0.1 },
-        { "symbol": "MRVL", "company_name": "Marvell Technology", "role": "Optical DSP and connectivity silicon", "weight": 0.08 }
+        { "symbol": "AAOI", "company_name": "Applied Optoelectronics", "role": "Data-center optical modules", "weight": 0.11 },
+        { "symbol": "CIEN", "company_name": "Ciena", "role": "Coherent optical systems and DCI", "weight": 0.1 },
+        { "symbol": "GLW", "company_name": "Corning", "role": "Fiber and optical connectivity", "weight": 0.09 },
+        { "symbol": "AVGO", "company_name": "Broadcom", "role": "Optical DSP, CPO, EML/PD", "weight": 0.09 },
+        { "symbol": "MRVL", "company_name": "Marvell Technology", "role": "Optical DSP and connectivity silicon", "weight": 0.07 },
+        { "symbol": "MTSI", "company_name": "MACOM Technology Solutions", "role": "Optical and high-speed analog semiconductors", "weight": 0.04 }
       ]
     },
     {
-      "track_id": "power_cooling",
-      "display_name": "Power and cooling infrastructure",
-      "short_name": "Power/Cooling",
-      "description": "Public-company basket for power distribution, thermal management, electrical systems, and data-center construction enablers.",
+      "track_id": "power_distribution",
+      "display_name": "Power distribution and grid infrastructure",
+      "short_name": "Power",
+      "description": "Public-company basket for data-center power distribution, electrical systems, grid interconnect, and power infrastructure exposure.",
       "components": [
-        { "component_name": "Cooling", "weight": 1.0 },
         { "component_name": "Power distribution", "weight": 1.0 },
         { "component_name": "Electrical power", "weight": 1.0 }
       ],
       "constituents": [
-        { "symbol": "VRT", "company_name": "Vertiv", "role": "Power and thermal systems", "weight": 0.2 },
-        { "symbol": "ETN", "company_name": "Eaton", "role": "Electrical and power distribution", "weight": 0.18 },
-        { "symbol": "TT", "company_name": "Trane Technologies", "role": "Cooling and thermal management", "weight": 0.14 },
+        { "symbol": "ETN", "company_name": "Eaton", "role": "Electrical distribution and grid-to-chip power management", "weight": 0.22 },
+        { "symbol": "VRT", "company_name": "Vertiv", "role": "Power systems and critical digital infrastructure", "weight": 0.18 },
+        { "symbol": "GEV", "company_name": "GE Vernova", "role": "Grid equipment and power generation infrastructure", "weight": 0.16 },
+        { "symbol": "PWR", "company_name": "Quanta Services", "role": "Power infrastructure construction and utility interconnect", "weight": 0.14 },
+        { "symbol": "NVT", "company_name": "nVent Electric", "role": "Electrical enclosures, PDUs, and power systems", "weight": 0.11 },
+        { "symbol": "HUBB", "company_name": "Hubbell", "role": "Electrical grid and data-center infrastructure", "weight": 0.1 },
+        { "symbol": "ABBNY", "company_name": "ABB", "role": "Electrification, automation, and power distribution", "weight": 0.09 }
+      ]
+    },
+    {
+      "track_id": "thermal_management",
+      "display_name": "Thermal management and liquid cooling",
+      "short_name": "Cooling",
+      "description": "Public-company basket for data-center cooling, liquid-cooling equipment, HVAC, and mechanical thermal infrastructure.",
+      "components": [
+        { "component_name": "Cooling", "weight": 1.0 }
+      ],
+      "constituents": [
+        { "symbol": "VRT", "company_name": "Vertiv", "role": "Liquid cooling and thermal systems for AI racks", "weight": 0.25 },
+        { "symbol": "MOD", "company_name": "Modine", "role": "Data-center thermal management and liquid cooling", "weight": 0.18 },
+        { "symbol": "TT", "company_name": "Trane Technologies", "role": "Cooling and HVAC systems", "weight": 0.16 },
         { "symbol": "JCI", "company_name": "Johnson Controls", "role": "Building systems and cooling", "weight": 0.12 },
-        { "symbol": "PWR", "company_name": "Quanta Services", "role": "Power infrastructure construction", "weight": 0.13 },
-        { "symbol": "NVT", "company_name": "nVent Electric", "role": "Electrical enclosures and power systems", "weight": 0.1 },
-        { "symbol": "HUBB", "company_name": "Hubbell", "role": "Electrical infrastructure", "weight": 0.08 },
-        { "symbol": "ABBNY", "company_name": "ABB", "role": "Electrification and automation", "weight": 0.05 }
+        { "symbol": "NVT", "company_name": "nVent Electric", "role": "Cooling distribution units and rack-level infrastructure", "weight": 0.1 },
+        { "symbol": "ETN", "company_name": "Eaton", "role": "Integrated power and cooling reference architectures", "weight": 0.08 },
+        { "symbol": "SMCI", "company_name": "Super Micro Computer", "role": "Liquid-cooled AI server systems", "weight": 0.06 },
+        { "symbol": "FIX", "company_name": "Comfort Systems USA", "role": "Mechanical systems construction", "weight": 0.05 }
       ]
     },
     {
       "track_id": "facilities",
-      "display_name": "Data-center facility shell",
+      "display_name": "Colocation and data-center construction",
       "short_name": "Facilities",
-      "description": "Public-company basket for colocation, data-center real estate, security, integration, and facility build-out exposure.",
+      "description": "Public-company basket for colocation, data-center real estate, technical services, and facility build-out exposure.",
       "components": [
         { "component_name": "Building / data hall", "weight": 1.0 },
         { "component_name": "Security", "weight": 1.0 },
@@ -196,13 +220,13 @@
         { "component_name": "Other major items", "weight": 0.35 }
       ],
       "constituents": [
-        { "symbol": "EQIX", "company_name": "Equinix", "role": "Global colocation data centers", "weight": 0.22 },
-        { "symbol": "DLR", "company_name": "Digital Realty", "role": "Wholesale and hyperscale data centers", "weight": 0.2 },
-        { "symbol": "AMT", "company_name": "American Tower", "role": "Data-center and digital infrastructure", "weight": 0.12 },
+        { "symbol": "EQIX", "company_name": "Equinix", "role": "Global colocation and AI-ready data centers", "weight": 0.23 },
+        { "symbol": "DLR", "company_name": "Digital Realty", "role": "Wholesale, hyperscale, and AI-ready data centers", "weight": 0.21 },
+        { "symbol": "IRM", "company_name": "Iron Mountain", "role": "Data-center and digital infrastructure", "weight": 0.14 },
         { "symbol": "CBRE", "company_name": "CBRE Group", "role": "Data-center real estate services", "weight": 0.12 },
-        { "symbol": "FIX", "company_name": "Comfort Systems USA", "role": "Mechanical systems construction", "weight": 0.12 },
-        { "symbol": "EME", "company_name": "EMCOR Group", "role": "Electrical and mechanical contracting", "weight": 0.12 },
-        { "symbol": "FTNT", "company_name": "Fortinet", "role": "Security infrastructure", "weight": 0.1 }
+        { "symbol": "FIX", "company_name": "Comfort Systems USA", "role": "Mechanical systems construction", "weight": 0.11 },
+        { "symbol": "EME", "company_name": "EMCOR Group", "role": "Electrical and mechanical contracting", "weight": 0.11 },
+        { "symbol": "AMT", "company_name": "American Tower", "role": "CoreSite data centers and edge digital infrastructure", "weight": 0.08 }
       ]
     }
   ]

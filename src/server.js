@@ -1961,6 +1961,16 @@ function buildTrackBreadthHistory(constituents) {
     .slice(-60);
 }
 
+function mergeTrackConstituentWithMarketData(trackConstituent, fetchedBySymbol) {
+  const fetched = fetchedBySymbol.get(trackConstituent.symbol);
+  if (!fetched) return trackConstituent;
+  const { symbol, company_name, role, weight, ...marketData } = fetched;
+  return {
+    ...marketData,
+    ...trackConstituent,
+  };
+}
+
 function buildBreadthHistoryTable(tracks) {
   const minimumMaxScore = Math.max(100, Math.ceil(tracks.length * 0.5) * 100);
   const trackMaps = new Map(
@@ -2047,7 +2057,9 @@ async function computeHardwareMarketBreadthPayload() {
   const fetchedBySymbol = new Map(fetched.map((item) => [item.symbol, item]));
 
   const tracks = (hardwareConfig.tracks || []).map((track) => {
-    const constituents = (track.constituents || []).map((item) => fetchedBySymbol.get(item.symbol) || item);
+    const constituents = (track.constituents || []).map((item) =>
+      mergeTrackConstituentWithMarketData(item, fetchedBySymbol),
+    );
     const valid20 = constituents.filter((item) => item.above_sma20 !== null && item.above_sma20 !== undefined);
     const valid50 = constituents.filter((item) => item.above_sma50 !== null && item.above_sma50 !== undefined);
     const above20 = valid20.filter((item) => item.above_sma20).length;
