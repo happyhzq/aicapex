@@ -1874,7 +1874,73 @@ async function fetchYahooHistory(symbol) {
   }
 }
 
-function summarizeHistory(constituent, history) {
+function nasdaqDateRange() {
+  const to = new Date();
+  const from = new Date(to.getTime() - 210 * 24 * 60 * 60 * 1000);
+  return {
+    fromDate: from.toISOString().slice(0, 10),
+    toDate: to.toISOString().slice(0, 10),
+  };
+}
+
+function parseNasdaqDate(value) {
+  const match = String(value || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!match) return null;
+  const [, month, day, year] = match;
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function parseNasdaqPrice(value) {
+  const parsed = Number(String(value || "").replace(/[$,]/g, ""));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function fetchNasdaqHistory(symbol) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 9000);
+  try {
+    const { fromDate, toDate } = nasdaqDateRange();
+    const url = `https://api.nasdaq.com/api/quote/${encodeURIComponent(
+      symbol,
+    )}/historical?assetclass=stocks&fromdate=${fromDate}&todate=${toDate}&limit=9999`;
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        Accept: "application/json, text/plain, */*",
+        Origin: "https://www.nasdaq.com",
+        Referer: "https://www.nasdaq.com/",
+        "User-Agent": "Mozilla/5.0 aicapex-monitor/0.1",
+      },
+    });
+    if (!response.ok) throw new Error(`Nasdaq historical ${response.status}`);
+    const body = await response.json();
+    const rows = (body?.data?.tradesTable?.rows || [])
+      .map((row) => ({
+        date: parseNasdaqDate(row.date),
+        close: parseNasdaqPrice(row.close),
+      }))
+      .filter((row) => row.date && Number.isFinite(row.close) && row.close > 0)
+      .sort((left, right) => left.date.localeCompare(right.date));
+    if (rows.length < 20) throw new Error("Nasdaq historical unavailable");
+    return rows;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchPriceHistory(symbol) {
+  try {
+    return { history: await fetchYahooHistory(symbol), source: "Yahoo Finance chart endpoint" };
+  } catch (yahooError) {
+    try {
+      return { history: await fetchNasdaqHistory(symbol), source: "Nasdaq historical endpoint" };
+    } catch (nasdaqError) {
+      throw new Error(`${yahooError.message}; ${nasdaqError.message}`);
+    }
+  }
+}
+
+function summarizeHistory(constituent, history, priceSource) {
   const closes = history.map((row) => row.close);
   const last = closes[closes.length - 1];
   const previous20 = closes.length > 20 ? closes[closes.length - 21] : null;
@@ -1889,6 +1955,7 @@ function summarizeHistory(constituent, history) {
     above_sma20: sma20 === null ? null : last > sma20,
     above_sma50: sma50 === null ? null : last > sma50,
     return_20d: previous20 ? last / previous20 - 1 : null,
+    price_source: priceSource,
     history,
   };
 }
@@ -2048,8 +2115,8 @@ async function computeHardwareMarketBreadthPayload() {
 
   const fetched = await mapLimit([...bySymbol.values()], 5, async (constituent) => {
     try {
-      const history = await fetchYahooHistory(constituent.symbol);
-      return summarizeHistory(constituent, history);
+      const { history, source } = await fetchPriceHistory(constituent.symbol);
+      return summarizeHistory(constituent, history, source);
     } catch (error) {
       return { ...constituent, error: error.message };
     }
@@ -2097,7 +2164,7 @@ async function computeHardwareMarketBreadthPayload() {
   const breadthHistory = buildBreadthHistoryTable(tracks);
   const payload = {
     as_of: new Date().toISOString(),
-    source: "Yahoo Finance chart endpoint",
+    source: "Yahoo Finance chart endpoint with Nasdaq historical fallback",
     methodology:
       "Equal-basket breadth by hardware track. A constituent is counted as positive breadth when its latest close is above its own 20-day SMA; 50-day breadth is shown as confirmation.",
     total_score: scoredTracks.reduce((sum, track) => sum + track.score, 0),
