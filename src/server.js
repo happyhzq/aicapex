@@ -2091,6 +2091,24 @@ function latestCompleteBreadthDate(payload) {
   return payload.breadth_history?.[0]?.date || null;
 }
 
+function configuredHardwareMarketTrackIds() {
+  return (hardwareConfig.tracks || []).map((track) => track.track_id);
+}
+
+function sameStringSet(left, right) {
+  if (left.length !== right.length) return false;
+  const rightSet = new Set(right);
+  return left.every((item) => rightSet.has(item));
+}
+
+function hardwareMarketSnapshotMatchesConfig(snapshot, payload) {
+  const configuredTrackIds = configuredHardwareMarketTrackIds();
+  const payloadTrackIds = (payload.tracks || []).map((track) => track.track_id);
+  if (!sameStringSet(payloadTrackIds, configuredTrackIds)) return false;
+  const trackCount = Number(snapshot.track_count || 0);
+  return !trackCount || trackCount === configuredTrackIds.length;
+}
+
 async function mapLimit(items, limit, mapper) {
   const results = new Array(items.length);
   let cursor = 0;
@@ -2311,10 +2329,22 @@ async function loadHardwareMarketSnapshotPayload(limit = 60) {
     if (missingTable(error)) return null;
     throw error;
   }
-  if (!snapshots.length) return null;
+  const compatibleSnapshots = [];
+  for (const snapshot of snapshots) {
+    let snapshotPayload = {};
+    try {
+      snapshotPayload = JSON.parse(snapshot.payload_json || "{}");
+    } catch {
+      snapshotPayload = {};
+    }
+    if (hardwareMarketSnapshotMatchesConfig(snapshot, snapshotPayload)) {
+      compatibleSnapshots.push({ row: snapshot, payload: snapshotPayload });
+    }
+  }
+  if (!compatibleSnapshots.length) return null;
 
-  const latest = snapshots[0];
-  const dates = snapshots.map((row) => sqlDate(row.snapshot_date)).filter(Boolean);
+  const latest = compatibleSnapshots[0].row;
+  const dates = compatibleSnapshots.map((entry) => sqlDate(entry.row.snapshot_date)).filter(Boolean);
   const trackRows = dates.length
     ? await query(
         `SELECT snapshot_date, track_id, score, status, constituents_total, priced_constituents,
@@ -2334,14 +2364,9 @@ async function loadHardwareMarketSnapshotPayload(limit = 60) {
     trackRowsByDate.get(date).set(row.track_id, row);
   }
 
-  let payload = {};
-  try {
-    payload = JSON.parse(latest.payload_json || "{}");
-  } catch {
-    payload = {};
-  }
+  const payload = compatibleSnapshots[0].payload;
   const trackIds = (payload.tracks || hardwareConfig.tracks || []).map((track) => track.track_id);
-  const breadthHistory = snapshots.map((snapshot) => {
+  const breadthHistory = compatibleSnapshots.map(({ row: snapshot }) => {
     const date = sqlDate(snapshot.snapshot_date);
     const scores = {};
     for (const trackId of trackIds) {
