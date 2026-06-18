@@ -56,6 +56,14 @@ const sessionTtlSeconds = toInt(process.env.AUTH_SESSION_TTL_SECONDS, 7 * 24 * 6
 const authMinPasswordLength = toInt(process.env.AUTH_MIN_PASSWORD_LENGTH, 6, { min: 4, max: 128 });
 const stripeWebhookToleranceSeconds = toInt(process.env.STRIPE_WEBHOOK_TOLERANCE_SECONDS, 300, { min: 30, max: 3600 });
 const stripeOneTimeAccessDays = toInt(process.env.STRIPE_ONE_TIME_ACCESS_DAYS, 30, { min: 1, max: 3660 });
+const hardwareMarketCatchupRetryMinutes = toInt(process.env.HARDWARE_MARKET_CATCHUP_RETRY_MINUTES, 120, {
+  min: 15,
+  max: 720,
+});
+const hardwareMarketCatchupMaxRetries = toInt(process.env.HARDWARE_MARKET_CATCHUP_MAX_RETRIES, 8, {
+  min: 0,
+  max: 24,
+});
 
 app.use(express.static(publicDir));
 
@@ -2507,21 +2515,54 @@ function clearHardwareMarketTimer() {
   nextHardwareMarketRefreshAt = null;
 }
 
-function scheduleHardwareMarketRefresh() {
+function hardwareMarketRetryDelayMs() {
+  return hardwareMarketCatchupRetryMinutes * 60 * 1000;
+}
+
+function shouldRetryHardwareMarketRefresh(previousDate, snapshotDate, attempt, error) {
+  if (hardwareMarketCatchupMaxRetries <= 0 || attempt >= hardwareMarketCatchupMaxRetries) return false;
+  if (error) return true;
+  if (!previousDate) return false;
+  return !snapshotDate || String(snapshotDate).localeCompare(String(previousDate)) <= 0;
+}
+
+async function latestCompatibleHardwareMarketSnapshotDate() {
+  const latest = await loadHardwareMarketSnapshotPayload();
+  return latest?.snapshot_date || latest?.breadth_history?.[0]?.date || null;
+}
+
+function scheduleHardwareMarketRefresh(options = {}) {
   clearHardwareMarketTimer();
   if (!envBool("HARDWARE_MARKET_AUTO_REFRESH_ENABLED", true)) return;
 
+  const attempt = Number(options.attempt || 0);
+  const baselineDate = options.baselineDate || null;
+  const isRetry = attempt > 0;
   const timeText = process.env.HARDWARE_MARKET_REFRESH_TIME || "06:30";
-  const waitMs = nextBeijingDailyDelayMs(timeText);
+  const waitMs = options.delayMs ?? nextBeijingDailyDelayMs(timeText);
   nextHardwareMarketRefreshAt = new Date(Date.now() + waitMs).toISOString();
   hardwareMarketTimer = setTimeout(async () => {
+    const previousDate = baselineDate || (await latestCompatibleHardwareMarketSnapshotDate());
+    let snapshotDate = null;
+    let refreshError = null;
     try {
-      await runHardwareMarketRefresh("schedule");
+      const result = await runHardwareMarketRefresh(isRetry ? `schedule-retry-${attempt}` : "schedule");
+      snapshotDate = result.snapshot_date;
     } catch (error) {
+      refreshError = error;
       console.error("Scheduled hardware market refresh failed:", error);
-    } finally {
-      scheduleHardwareMarketRefresh();
     }
+
+    if (shouldRetryHardwareMarketRefresh(previousDate, snapshotDate, attempt, refreshError)) {
+      scheduleHardwareMarketRefresh({
+        attempt: attempt + 1,
+        baselineDate: previousDate,
+        delayMs: hardwareMarketRetryDelayMs(),
+      });
+      return;
+    }
+
+    scheduleHardwareMarketRefresh();
   }, waitMs);
 }
 
@@ -2555,11 +2596,13 @@ app.get(
 app.get(
   "/api/hardware-market-breadth/status",
   asyncRoute(async (req, res) => {
-    const latest = await loadHardwareMarketSnapshotPayload(1);
+    const latest = await loadHardwareMarketSnapshotPayload();
     res.json({
       auto_refresh_enabled: envBool("HARDWARE_MARKET_AUTO_REFRESH_ENABLED", true),
       refresh_schedule: "Asia/Shanghai daily 06:30",
       refresh_time: process.env.HARDWARE_MARKET_REFRESH_TIME || "06:30",
+      catchup_retry_minutes: hardwareMarketCatchupRetryMinutes,
+      catchup_max_retries: hardwareMarketCatchupMaxRetries,
       next_refresh_at: nextHardwareMarketRefreshAt,
       running: Boolean(hardwareMarketJob?.running),
       job: hardwareMarketJob,

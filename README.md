@@ -237,7 +237,7 @@ Hardware breadth and optical split:
 - `/api/hardware-dashboard` derives track capex exposure and the optical investment split from the current model run.
 - `/api/hardware-market-breadth` reads the latest persisted hardware-market breadth snapshot.
 - `POST /api/hardware-market-breadth/refresh` manually fetches recent public-company prices, calculates each track's percent of constituents above their 20-day and 50-day moving averages, and stores the latest complete breadth snapshot in MySQL.
-- The server schedules this same hardware-market refresh daily at `06:30` Asia/Shanghai by default. Configure with `HARDWARE_MARKET_AUTO_REFRESH_ENABLED`, `HARDWARE_MARKET_REFRESH_TIME`, and `HARDWARE_MARKET_SEED_ON_START`.
+- The server schedules this same hardware-market refresh daily at `06:30` Asia/Shanghai by default. If the scheduled run does not advance the latest compatible snapshot date, it retries automatically because market-data vendors may publish the full U.S. close later than 06:30. Configure with `HARDWARE_MARKET_AUTO_REFRESH_ENABLED`, `HARDWARE_MARKET_REFRESH_TIME`, `HARDWARE_MARKET_SEED_ON_START`, `HARDWARE_MARKET_CATCHUP_RETRY_MINUTES`, and `HARDWARE_MARKET_CATCHUP_MAX_RETRIES`.
 
 Optional scheduler settings:
 
@@ -249,6 +249,11 @@ AUTO_UPDATE_INTERVAL_HOURS=24
 AUTO_UPDATE_WEEKLY_DAY=0
 AUTO_UPDATE_WEEKLY_TIME=00:00
 AUTO_UPDATE_RUN_ON_START=false
+HARDWARE_MARKET_AUTO_REFRESH_ENABLED=true
+HARDWARE_MARKET_REFRESH_TIME=06:30
+HARDWARE_MARKET_SEED_ON_START=true
+HARDWARE_MARKET_CATCHUP_RETRY_MINUTES=120
+HARDWARE_MARKET_CATCHUP_MAX_RETRIES=8
 UPDATE_CONFIG_PATH=tmp/update-config.json
 PIPELINE_UPDATE_COMMAND=
 EXTERNAL_SOURCE_CONFIG_PATH=config/external_data_sources.json
